@@ -52,6 +52,8 @@ export async function renderCollageToCanvas(
 
   for (const [index, slot] of input.template.slots.entries()) {
     const image = input.selectedImages[index];
+    assertRenderableImage(image);
+
     const element = await getDrawableImage(image);
     const slotRect = slotToPixelRect(slot, EXPORT_WIDTH, EXPORT_HEIGHT);
     const slotCenterX = slotRect.x + slotRect.width / 2;
@@ -136,6 +138,14 @@ async function getDrawableImage(
     throw new CollageRenderError("A selected image could not be loaded.", {
       cause: error
     });
+  }
+}
+
+function assertRenderableImage(
+  image: RenderableSourceImage | undefined
+): asserts image is RenderableSourceImage {
+  if (!image) {
+    throw new CollageRenderError("A selected image is missing.");
   }
 }
 

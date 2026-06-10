@@ -176,6 +176,25 @@ describe("fashion collage canvas renderer", () => {
     });
   });
 
+  it("throws export_failed when runtime input is missing a selected image", async () => {
+    installMockCanvas();
+    const malformedInput = {
+      ...makeInput(),
+      selectedImages: [
+        makeImage("image-1", { tag: "image-1" } as unknown as CanvasImageSource),
+        makeImage("image-2", { tag: "image-2" } as unknown as CanvasImageSource),
+        makeImage("image-3", { tag: "image-3" } as unknown as CanvasImageSource)
+      ]
+    } as unknown as CanvasRenderInput;
+
+    await expect(renderCollageToCanvas(malformedInput)).rejects.toBeInstanceOf(
+      CollageRenderError
+    );
+    await expect(renderCollageToCanvas(malformedInput)).rejects.toMatchObject({
+      code: "export_failed"
+    });
+  });
+
   it("throws export_failed when canvas drawing rejects an image", async () => {
     installMockCanvas({
       drawImage: () => {
