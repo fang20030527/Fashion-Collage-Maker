@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type RefObject } from "react";
 
 import styles from "@/features/fashion-collage-maker/FashionCollageMaker.module.css";
+import { EditorStep } from "@/features/fashion-collage-maker/components/EditorStep";
 import { SelectStep } from "@/features/fashion-collage-maker/components/SelectStep";
 import { UploadStep } from "@/features/fashion-collage-maker/components/UploadStep";
 import { REQUIRED_IMAGE_COUNT } from "@/features/fashion-collage-maker/constants";
@@ -12,7 +13,10 @@ import {
   type EditorAction,
   type EditorCleanup
 } from "@/features/fashion-collage-maker/editorReducer";
-import { normalizeImageFiles } from "@/features/fashion-collage-maker/imageNormalization";
+import {
+  normalizeImageFile,
+  normalizeImageFiles
+} from "@/features/fashion-collage-maker/imageNormalization";
 import { validateImageFiles } from "@/features/fashion-collage-maker/imageValidation";
 import type {
   EditorState,
@@ -20,6 +24,7 @@ import type {
 } from "@/features/fashion-collage-maker/types";
 
 type UploadStatus = "idle" | "normalizing";
+type ReplacementStatus = "idle" | "normalizing";
 
 function revokeImages(images: SourceImage[]) {
   images.forEach((image) => URL.revokeObjectURL(image.objectUrl));
@@ -41,17 +46,23 @@ export function FashionCollageMaker() {
   const [state, setState] = useState<EditorState>(createInitialEditorState);
   const [messages, setMessages] = useState<string[]>([]);
   const [uploadStatus, setUploadStatus] = useState<UploadStatus>("idle");
+  const [replacementStatus, setReplacementStatus] =
+    useState<ReplacementStatus>("idle");
   const ownedObjectUrls = useRef<Set<string>>(new Set());
   const stateRef = useRef(state);
   const isNormalizingRef = useRef(false);
+  const isReplacingRef = useRef(false);
   const uploadRequestToken = useRef(0);
+  const replaceRequestToken = useRef(0);
 
   useEffect(() => {
     const objectUrls = ownedObjectUrls.current;
 
     return () => {
       uploadRequestToken.current += 1;
+      replaceRequestToken.current += 1;
       isNormalizingRef.current = false;
+      isReplacingRef.current = false;
       objectUrls.forEach((objectUrl) => URL.revokeObjectURL(objectUrl));
       objectUrls.clear();
     };
@@ -154,6 +165,65 @@ export function FashionCollageMaker() {
     dispatchEditorAction({ type: "selectImages", imageIds });
   }
 
+  async function handleReplaceActiveSlot(file: File) {
+    if (isReplacingRef.current || stateRef.current.activeSlotIndex === null) {
+      return;
+    }
+
+    const validation = validateImageFiles([file]);
+    const rejectedMessages = validation.rejectedFiles.map((issue) => issue.message);
+
+    if (rejectedMessages.length > 0 || validation.filesToNormalize.length === 0) {
+      setMessages(
+        rejectedMessages.length > 0
+          ? rejectedMessages
+          : ["Choose a JPG, PNG, or WebP image to replace this slot."]
+      );
+      return;
+    }
+
+    isReplacingRef.current = true;
+    replaceRequestToken.current += 1;
+    const requestToken = replaceRequestToken.current;
+
+    setReplacementStatus("normalizing");
+    setMessages([]);
+
+    try {
+      const result = await normalizeImageFile(validation.filesToNormalize[0]);
+
+      if (requestToken !== replaceRequestToken.current) {
+        if (result.ok) {
+          URL.revokeObjectURL(result.image.objectUrl);
+        }
+        return;
+      }
+
+      if (!result.ok) {
+        setMessages([result.message]);
+        return;
+      }
+
+      ownedObjectUrls.current.add(result.image.objectUrl);
+      dispatchEditorAction({ type: "replaceActiveSlot", image: result.image });
+    } catch {
+      if (requestToken === replaceRequestToken.current) {
+        setMessages([
+          "That replacement image could not be prepared. Try a different photo."
+        ]);
+      }
+    } finally {
+      if (requestToken === replaceRequestToken.current) {
+        isReplacingRef.current = false;
+        setReplacementStatus("idle");
+      }
+    }
+  }
+
+  function handleExportPlaceholder() {
+    setMessages(["Export rendering is coming in the next task."]);
+  }
+
   return (
     <main className={styles.page}>
       {state.step === "upload" && (
@@ -173,12 +243,14 @@ export function FashionCollageMaker() {
       )}
 
       {(state.step === "edit" || state.step === "result") && (
-        <section className={styles.editorPlaceholder} aria-labelledby="editor-title">
-          <p className={styles.kicker}>Local editor</p>
-          <h1 id="editor-title">Fashion Collage Maker</h1>
-          <p>{state.selectedImages?.length ?? 0} of 4 photos loaded.</p>
-          <p className={styles.privacy}>Editor coming next.</p>
-        </section>
+        <EditorStep
+          state={state}
+          messages={messages}
+          replacementStatus={replacementStatus}
+          onAction={dispatchEditorAction}
+          onReplaceActiveSlot={handleReplaceActiveSlot}
+          onExport={handleExportPlaceholder}
+        />
       )}
     </main>
   );
