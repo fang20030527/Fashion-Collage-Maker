@@ -9,13 +9,17 @@ export type ImageNormalizationErrorCode =
   | "normalization_failed";
 
 export type ImageNormalizationResult =
-  | { ok: true; image: SourceImage }
-  | {
-      ok: false;
-      code: ImageNormalizationErrorCode;
-      message: string;
-      file: File;
-    };
+  | ImageNormalizationSuccess
+  | ImageNormalizationFailure;
+
+export type ImageNormalizationSuccess = { ok: true; image: SourceImage };
+
+export type ImageNormalizationFailure = {
+  ok: false;
+  code: ImageNormalizationErrorCode;
+  message: string;
+  file: File;
+};
 
 type DecodedImage = CanvasImageSource & {
   width: number;
@@ -57,6 +61,13 @@ export async function normalizeImageFile(file: File): Promise<ImageNormalization
     decoded.image.close?.();
     decoded.objectUrlToRevoke && URL.revokeObjectURL(decoded.objectUrlToRevoke);
   }
+}
+
+export async function normalizeImageFiles(
+  files: Iterable<File>
+): Promise<ImageNormalizationResult[]> {
+  // Upload UI should pass only successful result.image SourceImages into editor state.
+  return Promise.all(Array.from(files, normalizeImageFile));
 }
 
 async function readExifOrientation(file: File): Promise<ExifOrientation | null> {
