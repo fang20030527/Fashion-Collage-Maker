@@ -44,7 +44,11 @@ export async function normalizeImageFile(file: File): Promise<ImageNormalization
   }
 
   try {
-    const normalized = await renderNormalizedImage(file, decoded.image, orientation);
+    const normalized = await renderNormalizedImage(
+      file,
+      decoded.image,
+      decoded.manualOrientation ? orientation : null
+    );
 
     return {
       ok: true,
@@ -91,14 +95,16 @@ function isJpegFile(file: File) {
 async function decodeImage(file: File): Promise<{
   image: DecodedImage;
   objectUrlToRevoke: string | null;
+  manualOrientation: boolean;
 } | null> {
-  if ("createImageBitmap" in globalThis) {
+  if (typeof createImageBitmap === "function") {
     try {
       const imageBitmap = await createImageBitmap(file, { imageOrientation: "none" });
 
       return {
         image: imageBitmap,
-        objectUrlToRevoke: null
+        objectUrlToRevoke: null,
+        manualOrientation: true
       };
     } catch {
       // Fall through to Image decoding for browsers without full createImageBitmap support.
@@ -112,7 +118,8 @@ async function decodeImage(file: File): Promise<{
 
     return {
       image,
-      objectUrlToRevoke: objectUrl
+      objectUrlToRevoke: objectUrl,
+      manualOrientation: false
     };
   } catch {
     URL.revokeObjectURL(objectUrl);

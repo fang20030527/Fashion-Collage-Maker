@@ -10,7 +10,7 @@ function jpegWithoutExif() {
   return bytesToArrayBuffer([0xff, 0xd8, 0xff, 0xd9]);
 }
 
-function jpegWithOrientation(orientation: 1 | 3 | 6 | 8) {
+function jpegWithOrientation(orientation: 1 | 3 | 6 | 8, count = 1) {
   return bytesToArrayBuffer([
     0xff,
     0xd8,
@@ -38,7 +38,7 @@ function jpegWithOrientation(orientation: 1 | 3 | 6 | 8) {
     0x01,
     0x03,
     0x00,
-    0x01,
+    count,
     0x00,
     0x00,
     0x00,
@@ -72,5 +72,9 @@ describe("parseExifOrientation", () => {
 
   it("parses EXIF orientation 8", () => {
     expect(parseExifOrientation(jpegWithOrientation(8))).toBe(8);
+  });
+
+  it("rejects orientation entries with invalid count greater than 1", () => {
+    expect(parseExifOrientation(jpegWithOrientation(6, 2))).toBeNull();
   });
 });
