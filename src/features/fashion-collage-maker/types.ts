@@ -1,24 +1,20 @@
-export type Step = "upload" | "edit" | "result";
+export type Step = "upload" | "select" | "edit" | "result";
 
-export type ExportState = "idle" | "rendering" | "ready" | "error";
+export type ExportState = "idle" | "rendering" | "success" | "error";
 
 export type SourceImage = {
   id: string;
-  file: File;
   objectUrl: string;
-  name: string;
+  width: number;
+  height: number;
+  originalFileSize: number;
   mimeType: string;
-  size: number;
-  width?: number;
-  height?: number;
 };
 
 export type SlotAdjustment = {
-  imageId: string;
-  offsetX: number;
-  offsetY: number;
-  scale: number;
-  rotation: number;
+  panX: number;
+  panY: number;
+  zoom: number;
 };
 
 export type BackgroundPreset = {
@@ -52,14 +48,14 @@ export type TemplateConfig = {
   slots: readonly [TemplateSlot, TemplateSlot, TemplateSlot, TemplateSlot];
 };
 
-export type SelectedImages = readonly [
+export type SelectedImages = [
   SourceImage,
   SourceImage,
   SourceImage,
   SourceImage
 ];
 
-export type SlotAdjustments = readonly [
+export type SlotAdjustments = [
   SlotAdjustment,
   SlotAdjustment,
   SlotAdjustment,
@@ -68,12 +64,14 @@ export type SlotAdjustments = readonly [
 
 export type EditorState = {
   step: Step;
-  exportState: ExportState;
   sourceImages: SourceImage[];
   selectedImages: SelectedImages | null;
   templateId: string;
+  slotAdjustments: SlotAdjustments;
   backgroundColor: string;
-  slotAdjustments: SlotAdjustments | null;
+  activeSlotIndex: 0 | 1 | 2 | 3 | null;
+  exportState: ExportState;
+  exportBlobUrl: string | null;
 };
 
 export type RenderInput = {
