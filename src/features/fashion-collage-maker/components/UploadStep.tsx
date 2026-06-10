@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { useId, useRef, useState } from "react";
+import { useId, useState } from "react";
 
 import styles from "../FashionCollageMaker.module.css";
 
@@ -19,11 +19,15 @@ export function UploadStep({
   status
 }: UploadStepProps) {
   const inputId = useId();
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const isBusy = status === "normalizing";
 
   function handleInputChange(event: React.ChangeEvent<HTMLInputElement>) {
+    if (isBusy) {
+      event.currentTarget.value = "";
+      return;
+    }
+
     onFilesSelected(filesFromList(event.currentTarget.files));
     event.currentTarget.value = "";
   }
@@ -31,6 +35,11 @@ export function UploadStep({
   function handleDrop(event: React.DragEvent<HTMLDivElement>) {
     event.preventDefault();
     setIsDragging(false);
+
+    if (isBusy) {
+      return;
+    }
+
     onFilesSelected(filesFromList(event.dataTransfer.files));
   }
 
@@ -52,6 +61,9 @@ export function UploadStep({
           className={`${styles.dropzone} ${isDragging ? styles.dropzoneActive : ""}`}
           onDragEnter={(event) => {
             event.preventDefault();
+            if (isBusy) {
+              return;
+            }
             setIsDragging(true);
           }}
           onDragLeave={(event) => {
@@ -60,19 +72,27 @@ export function UploadStep({
           }}
           onDragOver={preventDropDefault}
           onDrop={handleDrop}
+          aria-busy={isBusy}
+          aria-disabled={isBusy}
         >
           <input
-            ref={fileInputRef}
             id={inputId}
             className={styles.fileInput}
             type="file"
             accept="image/jpeg,image/png,image/webp,image/*"
             multiple
+            disabled={isBusy}
             onChange={handleInputChange}
             aria-describedby="upload-help upload-errors"
           />
-          <label className={styles.uploadLabel} htmlFor={inputId}>
-            Choose photos
+          <label
+            className={`${styles.uploadLabel} ${
+              isBusy ? styles.uploadLabelDisabled : ""
+            }`}
+            htmlFor={inputId}
+            aria-disabled={isBusy}
+          >
+            {isBusy ? "Preparing photos" : "Choose photos"}
           </label>
           <p id="upload-help" className={styles.uploadHint}>
             Drop or choose 4 to 9 JPG, PNG, or WebP images.

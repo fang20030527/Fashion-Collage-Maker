@@ -122,6 +122,19 @@
   outline: none;
 }
 
+.uploadLabelDisabled {
+  border-color: #aaa097;
+  background: #d7d0c8;
+  color: #6a645e;
+  cursor: not-allowed;
+}
+
+.uploadLabelDisabled:hover,
+.uploadLabelDisabled:focus-visible {
+  border-color: #aaa097;
+  background: #d7d0c8;
+}
+
 .uploadHint,
 .status {
   margin: 16px 0 0;
