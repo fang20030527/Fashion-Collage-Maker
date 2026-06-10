@@ -27,7 +27,7 @@ export type EditorAction =
       type: "updateActiveSlotAdjustment";
       adjustment: Partial<SlotAdjustment>;
     }
-  | { type: "replaceActiveSlot"; imageId: string }
+  | { type: "replaceActiveSlot"; image: SourceImage }
   | { type: "resetActiveSlot" }
   | { type: "exportStarted" }
   | { type: "exportSucceeded"; objectUrl: string }
@@ -71,6 +71,10 @@ function cleanupExportUrl(state: EditorState): EditorCleanup[] {
   return [{ type: "revokeObjectUrl", objectUrl: state.exportBlobUrl }];
 }
 
+function cleanupObjectUrl(objectUrl: string): EditorCleanup[] {
+  return [{ type: "revokeObjectUrl", objectUrl }];
+}
+
 function clearExportState(state: EditorState): EditorState {
   return {
     ...state,
@@ -97,6 +101,26 @@ function replaceSelectedImage(
   const nextSelectedImages: SelectedImages = [...selectedImages];
   nextSelectedImages[slotIndex] = image;
   return nextSelectedImages;
+}
+
+function appendSourceImageIfNew(
+  sourceImages: SourceImage[],
+  image: SourceImage
+): SourceImage[] {
+  if (sourceImages.some((sourceImage) => sourceImage.id === image.id)) {
+    return sourceImages;
+  }
+
+  return [...sourceImages, image];
+}
+
+function canExport(state: EditorState): state is EditorState & {
+  selectedImages: SelectedImages;
+} {
+  return (
+    state.selectedImages !== null &&
+    (state.step === "edit" || state.step === "result")
+  );
 }
 
 export function createInitialEditorState(): EditorState {
@@ -241,21 +265,14 @@ export function reduceEditorState(
         return { state, cleanup: [] };
       }
 
-      const replacement = state.sourceImages.find(
-        (sourceImage) => sourceImage.id === action.imageId
-      );
-
-      if (replacement === undefined) {
-        return { state, cleanup: [] };
-      }
-
       return {
         state: {
           ...state,
+          sourceImages: appendSourceImageIfNew(state.sourceImages, action.image),
           selectedImages: replaceSelectedImage(
             state.selectedImages,
             state.activeSlotIndex,
-            replacement
+            action.image
           ),
           slotAdjustments: replaceSlotAdjustment(
             state.slotAdjustments,
@@ -285,6 +302,10 @@ export function reduceEditorState(
       };
 
     case "exportStarted":
+      if (!canExport(state)) {
+        return { state, cleanup: [] };
+      }
+
       return {
         state: {
           ...state,
@@ -295,8 +316,8 @@ export function reduceEditorState(
       };
 
     case "exportSucceeded":
-      if (state.selectedImages === null) {
-        return { state, cleanup: [] };
+      if (!canExport(state)) {
+        return { state, cleanup: cleanupObjectUrl(action.objectUrl) };
       }
 
       return {
@@ -310,10 +331,14 @@ export function reduceEditorState(
       };
 
     case "exportFailed":
+      if (!canExport(state)) {
+        return { state, cleanup: [] };
+      }
+
       return {
         state: {
           ...state,
-          step: state.selectedImages === null ? state.step : "edit",
+          step: "edit",
           exportState: "error",
           exportBlobUrl: null
         },

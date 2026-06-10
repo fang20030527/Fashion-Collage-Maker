@@ -163,13 +163,12 @@ describe("editor reducer", () => {
   });
 
   it("replaces only the selected slot image and resets that slot", () => {
-    const replacement = fiveImages[4];
+    const replacement = image("replacement-image");
     const editing = {
       ...editorReducer(createInitialEditorState(), {
         type: "uploadCompleted",
         images: fourImages
       }),
-      sourceImages: fiveImages,
       activeSlotIndex: 2 as const,
       slotAdjustments: [
         { panX: 0.2, panY: 0.1, zoom: 1.5 },
@@ -181,7 +180,7 @@ describe("editor reducer", () => {
 
     const state = editorReducer(editing, {
       type: "replaceActiveSlot",
-      imageId: replacement.id
+      image: replacement
     });
 
     expect(state.selectedImages).toEqual([
@@ -191,6 +190,7 @@ describe("editor reducer", () => {
       fourImages[3]
     ]);
     expect(state.selectedImages).toHaveLength(REQUIRED_IMAGE_COUNT);
+    expect(state.sourceImages).toEqual([...fourImages, replacement]);
     expect(state.slotAdjustments[2]).toEqual({ panX: 0, panY: 0, zoom: 1 });
   });
 
@@ -232,7 +232,7 @@ describe("editor reducer", () => {
     expect(reduced.cleanup).toEqual([]);
   });
 
-  it("does not export to result when no four-image selection exists", () => {
+  it("does not export to result and cleans late export URL when no four-image selection exists", () => {
     const selecting = editorReducer(createInitialEditorState(), {
       type: "uploadCompleted",
       images: fiveImages
@@ -246,7 +246,36 @@ describe("editor reducer", () => {
     expect(reduced.state).toEqual(selecting);
     expect(reduced.state.step).not.toBe("result");
     expect(reduced.state.selectedImages).toBeNull();
-    expect(reduced.cleanup).toEqual([]);
+    expect(reduced.cleanup).toEqual([
+      { type: "revokeObjectUrl", objectUrl: "blob:export-1" }
+    ]);
+  });
+
+  it("does not start or fail export in upload state", () => {
+    const upload = createInitialEditorState();
+
+    const started = reduceEditorState(upload, { type: "exportStarted" });
+    const failed = reduceEditorState(upload, { type: "exportFailed" });
+
+    expect(started.state).toEqual(upload);
+    expect(started.cleanup).toEqual([]);
+    expect(failed.state).toEqual(upload);
+    expect(failed.cleanup).toEqual([]);
+  });
+
+  it("does not start or fail export in select state", () => {
+    const selecting = editorReducer(createInitialEditorState(), {
+      type: "uploadCompleted",
+      images: fiveImages
+    });
+
+    const started = reduceEditorState(selecting, { type: "exportStarted" });
+    const failed = reduceEditorState(selecting, { type: "exportFailed" });
+
+    expect(started.state).toEqual(selecting);
+    expect(started.cleanup).toEqual([]);
+    expect(failed.state).toEqual(selecting);
+    expect(failed.cleanup).toEqual([]);
   });
 
   it("starts over by clearing images, edits, active slot, and export result", () => {
