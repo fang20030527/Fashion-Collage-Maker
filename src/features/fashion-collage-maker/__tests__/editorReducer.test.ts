@@ -218,6 +218,37 @@ describe("editor reducer", () => {
     ]);
   });
 
+  it("does not return to edit when no four-image selection exists", () => {
+    const selecting = editorReducer(createInitialEditorState(), {
+      type: "uploadCompleted",
+      images: fiveImages
+    });
+
+    const reduced = reduceEditorState(selecting, { type: "backToEdit" });
+
+    expect(reduced.state).toEqual(selecting);
+    expect(reduced.state.step).not.toBe("edit");
+    expect(reduced.state.selectedImages).toBeNull();
+    expect(reduced.cleanup).toEqual([]);
+  });
+
+  it("does not export to result when no four-image selection exists", () => {
+    const selecting = editorReducer(createInitialEditorState(), {
+      type: "uploadCompleted",
+      images: fiveImages
+    });
+
+    const reduced = reduceEditorState(selecting, {
+      type: "exportSucceeded",
+      objectUrl: "blob:export-1"
+    });
+
+    expect(reduced.state).toEqual(selecting);
+    expect(reduced.state.step).not.toBe("result");
+    expect(reduced.state.selectedImages).toBeNull();
+    expect(reduced.cleanup).toEqual([]);
+  });
+
   it("starts over by clearing images, edits, active slot, and export result", () => {
     const result = {
       ...editorReducer(createInitialEditorState(), {

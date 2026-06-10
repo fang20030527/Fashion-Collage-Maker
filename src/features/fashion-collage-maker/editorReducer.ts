@@ -321,6 +321,10 @@ export function reduceEditorState(
       };
 
     case "backToEdit":
+      if (state.selectedImages === null) {
+        return { state, cleanup: [] };
+      }
+
       return {
         state: {
           ...state,
