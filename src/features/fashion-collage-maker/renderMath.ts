@@ -30,6 +30,9 @@ export function slotToPixelRect(
   targetHeight: number
 ): PixelRect {
   assertPositiveSize({ width: targetWidth, height: targetHeight }, "target");
+  assertFiniteCoordinate(slot.x, "slot x");
+  assertFiniteCoordinate(slot.y, "slot y");
+  assertPositiveSize(slot, "slot");
 
   return {
     x: slot.x * targetWidth,
@@ -39,7 +42,7 @@ export function slotToPixelRect(
   };
 }
 
-export function getMinimumCoverZoom(imageSize: Size, slotSize: Size): number {
+export function getMinimumCoverScale(imageSize: Size, slotSize: Size): number {
   assertPositiveSize(imageSize, "image");
   assertPositiveSize(slotSize, "slot");
 
@@ -49,6 +52,9 @@ export function getMinimumCoverZoom(imageSize: Size, slotSize: Size): number {
   );
 }
 
+/** @deprecated Use getMinimumCoverScale. */
+export const getMinimumCoverZoom = getMinimumCoverScale;
+
 export function getCoverDrawRect({
   imageSize,
   slotRect,
@@ -56,14 +62,13 @@ export function getCoverDrawRect({
 }: CoverDrawRectInput): PixelRect {
   assertPositiveSize(imageSize, "image");
   assertPositiveSize(slotRect, "slot");
+  assertFiniteCoordinate(slotRect.x, "slot x");
+  assertFiniteCoordinate(slotRect.y, "slot y");
 
-  const resolvedAdjustment = {
-    ...DEFAULT_ADJUSTMENT,
-    ...adjustment
-  };
-  const minimumCoverZoom = getMinimumCoverZoom(imageSize, slotRect);
+  const resolvedAdjustment = sanitizeAdjustment(adjustment);
+  const minimumCoverScale = getMinimumCoverScale(imageSize, slotRect);
   const userZoom = Math.max(resolvedAdjustment.zoom, 1);
-  const scale = minimumCoverZoom * userZoom;
+  const scale = minimumCoverScale * userZoom;
   const drawSize = {
     width: imageSize.width * scale,
     height: imageSize.height * scale
@@ -111,8 +116,30 @@ function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
 }
 
+function sanitizeAdjustment(adjustment?: Partial<SlotAdjustment>): SlotAdjustment {
+  return {
+    panX: sanitizeFiniteNumber(adjustment?.panX, DEFAULT_ADJUSTMENT.panX),
+    panY: sanitizeFiniteNumber(adjustment?.panY, DEFAULT_ADJUSTMENT.panY),
+    zoom: sanitizeFiniteNumber(adjustment?.zoom, DEFAULT_ADJUSTMENT.zoom)
+  };
+}
+
+function sanitizeFiniteNumber(value: number | undefined, fallback: number): number {
+  return Number.isFinite(value) ? value : fallback;
+}
+
 function assertPositiveSize(size: Size, label: string) {
+  if (!Number.isFinite(size.width) || !Number.isFinite(size.height)) {
+    throw new RangeError(`${label} width and height must be finite numbers`);
+  }
+
   if (size.width <= 0 || size.height <= 0) {
     throw new RangeError(`${label} width and height must be greater than zero`);
+  }
+}
+
+function assertFiniteCoordinate(value: number, label: string) {
+  if (!Number.isFinite(value)) {
+    throw new RangeError(`${label} must be a finite number`);
   }
 }

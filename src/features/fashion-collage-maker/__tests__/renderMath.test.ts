@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   getCoverDrawRect,
+  getMinimumCoverScale,
   getMinimumCoverZoom,
   slotToPixelRect,
   type PixelRect
@@ -83,6 +84,7 @@ describe("fashion collage render math", () => {
     const imageSize = { width: 1000, height: 500 };
     const slotRect: PixelRect = { x: 0, y: 0, width: 300, height: 300 };
 
+    expect(getMinimumCoverScale(imageSize, slotRect)).toBe(0.6);
     expect(getMinimumCoverZoom(imageSize, slotRect)).toBe(0.6);
 
     const drawRect = getCoverDrawRect({
@@ -155,5 +157,97 @@ describe("fashion collage render math", () => {
       height: 2255.04
     });
     expectSlotCovered(drawRect, slotRect);
+  });
+
+  it("rejects NaN and infinite image sizes", () => {
+    const slotRect: PixelRect = { x: 0, y: 0, width: 300, height: 300 };
+
+    expect(() =>
+      getCoverDrawRect({
+        imageSize: { width: Number.NaN, height: 500 },
+        slotRect
+      })
+    ).toThrow(RangeError);
+    expect(() =>
+      getCoverDrawRect({
+        imageSize: { width: 1000, height: Number.POSITIVE_INFINITY },
+        slotRect
+      })
+    ).toThrow(RangeError);
+    expect(() =>
+      getMinimumCoverScale(
+        { width: Number.NEGATIVE_INFINITY, height: 500 },
+        slotRect
+      )
+    ).toThrow(RangeError);
+  });
+
+  it("rejects NaN and infinite slot sizes", () => {
+    const imageSize = { width: 1000, height: 500 };
+
+    expect(() =>
+      getCoverDrawRect({
+        imageSize,
+        slotRect: { x: 0, y: 0, width: Number.NaN, height: 300 }
+      })
+    ).toThrow(RangeError);
+    expect(() =>
+      getCoverDrawRect({
+        imageSize,
+        slotRect: { x: 0, y: 0, width: 300, height: Number.POSITIVE_INFINITY }
+      })
+    ).toThrow(RangeError);
+    expect(() =>
+      slotToPixelRect(
+        { id: "bad-slot", x: 0, y: 0, width: 0.5, height: 0.5 },
+        Number.POSITIVE_INFINITY,
+        2700
+      )
+    ).toThrow(RangeError);
+  });
+
+  it("treats NaN and infinite pan values as centered pan", () => {
+    const slotRect: PixelRect = { x: 0, y: 0, width: 300, height: 300 };
+    const centeredDrawRect = getCoverDrawRect({
+      imageSize: { width: 1000, height: 500 },
+      slotRect,
+      adjustment: { panX: 0, panY: 0, zoom: 1.5 }
+    });
+    const sanitizedDrawRect = getCoverDrawRect({
+      imageSize: { width: 1000, height: 500 },
+      slotRect,
+      adjustment: {
+        panX: Number.NaN,
+        panY: Number.POSITIVE_INFINITY,
+        zoom: 1.5
+      }
+    });
+
+    expectRectCloseTo(sanitizedDrawRect, centeredDrawRect);
+    expectSlotCovered(sanitizedDrawRect, slotRect);
+  });
+
+  it("treats NaN and infinite zoom values as one", () => {
+    const slotRect: PixelRect = { x: 0, y: 0, width: 300, height: 300 };
+    const minimumDrawRect = getCoverDrawRect({
+      imageSize: { width: 1000, height: 500 },
+      slotRect,
+      adjustment: { panX: 0, panY: 0, zoom: 1 }
+    });
+
+    for (const zoom of [
+      Number.NaN,
+      Number.POSITIVE_INFINITY,
+      Number.NEGATIVE_INFINITY
+    ]) {
+      const sanitizedDrawRect = getCoverDrawRect({
+        imageSize: { width: 1000, height: 500 },
+        slotRect,
+        adjustment: { panX: 0, panY: 0, zoom }
+      });
+
+      expectRectCloseTo(sanitizedDrawRect, minimumDrawRect);
+      expectSlotCovered(sanitizedDrawRect, slotRect);
+    }
   });
 });
