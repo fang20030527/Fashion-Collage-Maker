@@ -124,6 +124,6 @@ export type TemplateId = (typeof TEMPLATES)[number]["id"];
 
 export const DEFAULT_TEMPLATE_ID: TemplateId = "editorial-hero";
 
-export function getTemplateById(templateId: TemplateId): TemplateConfig {
+export function getTemplateById(templateId: string): TemplateConfig {
   return TEMPLATES.find((template) => template.id === templateId) ?? TEMPLATES[0];
 }

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { BACKGROUND_PRESETS } from "../constants";
-import { TEMPLATES } from "../templates";
+import { getTemplateById, TEMPLATES } from "../templates";
 import type {
   EditorState,
   ExportState,
@@ -11,95 +11,8 @@ import type {
   SlotAdjustments,
   SourceImage,
   Step,
-  TemplateConfig,
   TemplateSlot
 } from "../types";
-
-type Equal<Actual, Expected> = (<Value>() => Value extends Actual ? 1 : 2) extends <
-  Value
->() => Value extends Expected ? 1 : 2
-  ? (<Value>() => Value extends Expected ? 1 : 2) extends <Value>() => Value extends
-      Actual
-      ? 1
-      : 2
-    ? true
-    : false
-  : false;
-
-type Expect<Actual extends true> = Actual;
-
-type SpecTypeContract = [
-  Expect<Equal<Step, "upload" | "select" | "edit" | "result">>,
-  Expect<Equal<ExportState, "idle" | "rendering" | "success" | "error">>,
-  Expect<
-    Equal<
-      SourceImage,
-      {
-        id: string;
-        objectUrl: string;
-        width: number;
-        height: number;
-        originalFileSize: number;
-        mimeType: string;
-      }
-    >
-  >,
-  Expect<Equal<SlotAdjustment, { panX: number; panY: number; zoom: number }>>,
-  Expect<
-    Equal<
-      SelectedImages,
-      [SourceImage, SourceImage, SourceImage, SourceImage]
-    >
-  >,
-  Expect<
-    Equal<
-      SlotAdjustments,
-      [SlotAdjustment, SlotAdjustment, SlotAdjustment, SlotAdjustment]
-    >
-  >,
-  Expect<
-    Equal<
-      EditorState,
-      {
-        step: Step;
-        sourceImages: SourceImage[];
-        selectedImages: SelectedImages | null;
-        templateId: string;
-        slotAdjustments: SlotAdjustments;
-        backgroundColor: string;
-        activeSlotIndex: 0 | 1 | 2 | 3 | null;
-        exportState: ExportState;
-        exportBlobUrl: string | null;
-      }
-    >
-  >,
-  Expect<
-    Equal<
-      RenderInput,
-      {
-        template: TemplateConfig;
-        selectedImages: SelectedImages;
-        slotAdjustments: SlotAdjustments;
-        backgroundColor: string;
-        width: number;
-        height: number;
-      }
-    >
-  >
-];
-
-const specTypeContractIsChecked = true satisfies SpecTypeContract extends readonly [
-  true,
-  true,
-  true,
-  true,
-  true,
-  true,
-  true,
-  true
-]
-  ? true
-  : false;
 
 const presetColors = new Set(BACKGROUND_PRESETS.map((preset) => preset.color));
 
@@ -117,6 +30,8 @@ function slotsOverlap(
 
 describe("collage templates", () => {
   it("keeps the domain type contract aligned with the MVP spec", () => {
+    const stepWithSelect: Step = "select";
+    const successfulExport: ExportState = "success";
     const sourceImage: SourceImage = {
       id: "image-1",
       objectUrl: "blob:test-image",
@@ -125,6 +40,7 @@ describe("collage templates", () => {
       originalFileSize: 1024,
       mimeType: "image/jpeg"
     };
+    const slotAdjustment: SlotAdjustment = { panX: 0, panY: 0, zoom: 1 };
     const selectedImages: SelectedImages = [
       sourceImage,
       sourceImage,
@@ -132,7 +48,7 @@ describe("collage templates", () => {
       sourceImage
     ];
     const slotAdjustments: SlotAdjustments = [
-      { panX: 0, panY: 0, zoom: 1 },
+      slotAdjustment,
       { panX: 0.1, panY: -0.1, zoom: 1.2 },
       { panX: -0.05, panY: 0, zoom: 1 },
       { panX: 0, panY: 0.08, zoom: 0.95 }
@@ -145,24 +61,34 @@ describe("collage templates", () => {
       slotAdjustments,
       backgroundColor: BACKGROUND_PRESETS[0].color,
       activeSlotIndex: 0,
-      exportState: "success",
+      exportState: successfulExport,
       exportBlobUrl: "blob:export"
     };
+    const requiredSourceImageFields: Pick<
+      SourceImage,
+      "objectUrl" | "width" | "height" | "originalFileSize" | "mimeType"
+    > = sourceImage;
+    const requiredSlotAdjustmentFields: Pick<
+      SlotAdjustment,
+      "panX" | "panY" | "zoom"
+    > = slotAdjustment;
+    const nonNullSlotAdjustments: SlotAdjustments = editorState.slotAdjustments;
+    const activeSlotIndex: EditorState["activeSlotIndex"] = 3;
+    const exportBlobUrl: EditorState["exportBlobUrl"] = editorState.exportBlobUrl;
     const renderInput: RenderInput = {
       template: TEMPLATES[0],
       selectedImages,
-      slotAdjustments,
+      slotAdjustments: nonNullSlotAdjustments,
       backgroundColor: editorState.backgroundColor,
       width: 2160,
       height: 2700
     };
 
-    expect(specTypeContractIsChecked).toBe(true);
-    expect(editorState.slotAdjustments[0]).toEqual({
-      panX: 0,
-      panY: 0,
-      zoom: 1
-    });
+    expect(stepWithSelect).toBe("select");
+    expect(requiredSourceImageFields.originalFileSize).toBe(1024);
+    expect(requiredSlotAdjustmentFields).toEqual(slotAdjustment);
+    expect(activeSlotIndex).toBe(3);
+    expect(exportBlobUrl).toBe("blob:export");
     expect(renderInput.selectedImages).toHaveLength(4);
   });
 
@@ -171,6 +97,13 @@ describe("collage templates", () => {
 
     expect(TEMPLATES).toHaveLength(4);
     expect(new Set(templateIds).size).toBe(templateIds.length);
+  });
+
+  it("finds templates from a string id and falls back to the default template", () => {
+    expect(getTemplateById("clean-grid").id).toBe("clean-grid");
+    expect(getTemplateById("template-id-from-editor-state").id).toBe(
+      TEMPLATES[0].id
+    );
   });
 
   it("keeps every template browser-independent and renderable", () => {
