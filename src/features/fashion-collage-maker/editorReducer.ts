@@ -40,7 +40,9 @@ export type EditorReduction = {
   cleanup: EditorCleanup[];
 };
 
-const presetColors = new Set(BACKGROUND_PRESETS.map((preset) => preset.color));
+const presetColors = new Set<string>(
+  BACKGROUND_PRESETS.map((preset) => preset.color)
+);
 
 function defaultSlotAdjustment(): SlotAdjustment {
   return { panX: 0, panY: 0, zoom: 1 };

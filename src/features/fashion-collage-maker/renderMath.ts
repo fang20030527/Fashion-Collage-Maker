@@ -125,7 +125,7 @@ function sanitizeAdjustment(adjustment?: Partial<SlotAdjustment>): SlotAdjustmen
 }
 
 function sanitizeFiniteNumber(value: number | undefined, fallback: number): number {
-  return Number.isFinite(value) ? value : fallback;
+  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
 }
 
 function assertPositiveSize(size: Size, label: string) {
