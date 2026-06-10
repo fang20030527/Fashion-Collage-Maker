@@ -18,8 +18,6 @@ export type CanvasRenderInput = Omit<
   "selectedImages" | "width" | "height"
 > & {
   selectedImages: RenderableSelectedImages;
-  width?: number;
-  height?: number;
 };
 
 export type CollageRenderErrorCode = "export_failed";
@@ -70,52 +68,55 @@ export async function renderCollageToCanvas(
     });
 
     context.save();
-    context.translate(slotCenterX, slotCenterY);
-    context.rotate(degreesToRadians(slot.rotation ?? 0));
-
-    if (slot.shadow) {
-      context.save();
-      context.shadowColor = slot.shadow.color;
-      context.shadowBlur = slot.shadow.blur;
-      context.shadowOffsetX = slot.shadow.offsetX;
-      context.shadowOffsetY = slot.shadow.offsetY;
-      context.fillStyle = input.backgroundColor;
-      context.fillRect(localSlotX, localSlotY, slotRect.width, slotRect.height);
-      context.restore();
-    }
-
-    context.beginPath();
-    context.rect(localSlotX, localSlotY, slotRect.width, slotRect.height);
-    context.clip();
 
     try {
-      context.drawImage(
-        element,
-        drawRect.x - slotCenterX,
-        drawRect.y - slotCenterY,
-        drawRect.width,
-        drawRect.height
-      );
-    } catch (error) {
-      throw new CollageRenderError("A selected image could not be drawn.", {
-        cause: error
-      });
+      context.translate(slotCenterX, slotCenterY);
+      context.rotate(degreesToRadians(slot.rotation ?? 0));
+
+      if (slot.shadow) {
+        context.save();
+        context.shadowColor = slot.shadow.color;
+        context.shadowBlur = slot.shadow.blur;
+        context.shadowOffsetX = slot.shadow.offsetX;
+        context.shadowOffsetY = slot.shadow.offsetY;
+        context.fillStyle = input.backgroundColor;
+        context.fillRect(localSlotX, localSlotY, slotRect.width, slotRect.height);
+        context.restore();
+      }
+
+      context.beginPath();
+      context.rect(localSlotX, localSlotY, slotRect.width, slotRect.height);
+      context.clip();
+
+      try {
+        context.drawImage(
+          element,
+          drawRect.x - slotCenterX,
+          drawRect.y - slotCenterY,
+          drawRect.width,
+          drawRect.height
+        );
+      } catch (error) {
+        throw new CollageRenderError("A selected image could not be drawn.", {
+          cause: error
+        });
+      }
+
+      if (slot.borderColor && slot.borderWidth && slot.borderWidth > 0) {
+        const inset = slot.borderWidth / 2;
+
+        context.strokeStyle = slot.borderColor;
+        context.lineWidth = slot.borderWidth;
+        context.strokeRect(
+          localSlotX + inset,
+          localSlotY + inset,
+          Math.max(0, slotRect.width - slot.borderWidth),
+          Math.max(0, slotRect.height - slot.borderWidth)
+        );
+      }
+    } finally {
+      context.restore();
     }
-
-    if (slot.borderColor && slot.borderWidth && slot.borderWidth > 0) {
-      const inset = slot.borderWidth / 2;
-
-      context.strokeStyle = slot.borderColor;
-      context.lineWidth = slot.borderWidth;
-      context.strokeRect(
-        localSlotX + inset,
-        localSlotY + inset,
-        Math.max(0, slotRect.width - slot.borderWidth),
-        Math.max(0, slotRect.height - slot.borderWidth)
-      );
-    }
-
-    context.restore();
   }
 
   return canvas;

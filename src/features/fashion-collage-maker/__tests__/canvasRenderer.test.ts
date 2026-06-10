@@ -196,15 +196,23 @@ describe("fashion collage canvas renderer", () => {
   });
 
   it("throws export_failed when canvas drawing rejects an image", async () => {
-    installMockCanvas({
+    const { calls } = installMockCanvas({
       drawImage: () => {
         throw new Error("draw failed");
       }
     });
+    const render = renderCollageToCanvas(makeInput());
 
-    await expect(renderCollageToCanvas(makeInput())).rejects.toBeInstanceOf(
-      CollageRenderError
+    await expect(render).rejects.toBeInstanceOf(CollageRenderError);
+    await expect(render).rejects.toMatchObject({ code: "export_failed" });
+
+    const drawIndex = calls.findIndex((call) => call.name === "drawImage");
+    const restoreAfterDrawIndex = calls.findIndex(
+      (call, index) => index > drawIndex && call.name === "restore"
     );
+
+    expect(drawIndex).toBeGreaterThan(-1);
+    expect(restoreAfterDrawIndex).toBeGreaterThan(drawIndex);
   });
 
   it("throws export_failed when a 2d canvas context cannot be created", async () => {
