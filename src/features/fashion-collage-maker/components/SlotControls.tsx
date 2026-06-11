@@ -1,4 +1,4 @@
-import { useId } from "react";
+import { useId, useRef } from "react";
 
 import type { EditorAction } from "../editorReducer";
 import styles from "../FashionCollageMaker.module.css";
@@ -20,6 +20,7 @@ export function SlotControls({
   onReplaceFile
 }: SlotControlsProps) {
   const replaceInputId = useId();
+  const replaceInputRef = useRef<HTMLInputElement>(null);
 
   if (activeSlotIndex === null || adjustment === null) {
     return (
@@ -72,21 +73,25 @@ export function SlotControls({
       <div className={styles.slotActions}>
         <input
           id={replaceInputId}
+          ref={replaceInputRef}
           className={styles.fileInput}
           type="file"
           accept="image/jpeg,image/png,image/webp,image/*"
           disabled={isReplacing}
+          tabIndex={-1}
           onChange={handleReplaceChange}
         />
-        <label
+        <button
           className={`${styles.secondaryButton} ${
             isReplacing ? styles.secondaryButtonDisabled : ""
           }`}
-          htmlFor={replaceInputId}
-          aria-disabled={isReplacing}
+          type="button"
+          disabled={isReplacing}
+          aria-controls={replaceInputId}
+          onClick={() => replaceInputRef.current?.click()}
         >
           {isReplacing ? "Replacing..." : "Replace"}
-        </label>
+        </button>
         <button
           className={styles.secondaryButton}
           type="button"

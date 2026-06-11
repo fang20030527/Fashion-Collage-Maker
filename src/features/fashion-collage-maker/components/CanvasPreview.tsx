@@ -170,6 +170,7 @@ export function CanvasPreview({
               aria-pressed={isActive}
               aria-label={`Select slot ${slotIndex + 1}`}
             >
+              {/* eslint-disable-next-line @next/next/no-img-element -- Preview uses blob URLs with dynamic crop rect styles. */}
               <img
                 src={image.objectUrl}
                 alt=""

@@ -194,6 +194,39 @@ describe("editor reducer", () => {
     expect(state.slotAdjustments[2]).toEqual({ panX: 0, panY: 0, zoom: 1 });
   });
 
+  it("replaces a specific slot even when another slot is active", () => {
+    const replacement = image("replacement-image");
+    const editing = {
+      ...editorReducer(createInitialEditorState(), {
+        type: "uploadCompleted",
+        images: fourImages
+      }),
+      activeSlotIndex: 3 as const,
+      slotAdjustments: [
+        { panX: 0.2, panY: 0.1, zoom: 1.5 },
+        { panX: -0.1, panY: 0, zoom: 1.2 },
+        { panX: 0, panY: -0.3, zoom: 1.1 },
+        { panX: 0.4, panY: 0.4, zoom: 0.9 }
+      ]
+    };
+
+    const state = editorReducer(editing, {
+      type: "replaceSlot",
+      slotIndex: 1,
+      image: replacement
+    });
+
+    expect(state.activeSlotIndex).toBe(3);
+    expect(state.selectedImages).toEqual([
+      fourImages[0],
+      replacement,
+      fourImages[2],
+      fourImages[3]
+    ]);
+    expect(state.slotAdjustments[1]).toEqual({ panX: 0, panY: 0, zoom: 1 });
+    expect(state.slotAdjustments[3]).toEqual({ panX: 0.4, panY: 0.4, zoom: 0.9 });
+  });
+
   it("returns from result to edit while preserving editor choices and cleaning export URL", () => {
     const result = {
       ...editorReducer(createInitialEditorState(), {

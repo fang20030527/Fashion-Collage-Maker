@@ -20,6 +20,7 @@ import {
 import { validateImageFiles } from "@/features/fashion-collage-maker/imageValidation";
 import type {
   EditorState,
+  SelectedImages,
   SourceImage
 } from "@/features/fashion-collage-maker/types";
 
@@ -40,6 +41,14 @@ function applyEditorCleanup(
       ownedObjectUrls.current.delete(record.objectUrl);
     }
   });
+}
+
+function isImageSelected(selectedImages: SelectedImages | null, image: SourceImage) {
+  return (
+    selectedImages?.some(
+      (selectedImage) => selectedImage.objectUrl === image.objectUrl
+    ) ?? false
+  );
 }
 
 export function FashionCollageMaker() {
@@ -166,7 +175,17 @@ export function FashionCollageMaker() {
   }
 
   async function handleReplaceActiveSlot(file: File) {
-    if (isReplacingRef.current || stateRef.current.activeSlotIndex === null) {
+    const targetSlotIndex = stateRef.current.activeSlotIndex;
+    const previousImage =
+      targetSlotIndex === null
+        ? null
+        : stateRef.current.selectedImages?.[targetSlotIndex] ?? null;
+
+    if (
+      isReplacingRef.current ||
+      targetSlotIndex === null ||
+      previousImage === null
+    ) {
       return;
     }
 
@@ -205,7 +224,19 @@ export function FashionCollageMaker() {
       }
 
       ownedObjectUrls.current.add(result.image.objectUrl);
-      dispatchEditorAction({ type: "replaceActiveSlot", image: result.image });
+      dispatchEditorAction({
+        type: "replaceSlot",
+        slotIndex: targetSlotIndex,
+        image: result.image
+      });
+
+      if (
+        ownedObjectUrls.current.has(previousImage.objectUrl) &&
+        !isImageSelected(stateRef.current.selectedImages, previousImage)
+      ) {
+        URL.revokeObjectURL(previousImage.objectUrl);
+        ownedObjectUrls.current.delete(previousImage.objectUrl);
+      }
     } catch {
       if (requestToken === replaceRequestToken.current) {
         setMessages([

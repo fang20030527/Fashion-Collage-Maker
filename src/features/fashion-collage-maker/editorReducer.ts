@@ -27,6 +27,11 @@ export type EditorAction =
       type: "updateActiveSlotAdjustment";
       adjustment: Partial<SlotAdjustment>;
     }
+  | {
+      type: "replaceSlot";
+      slotIndex: 0 | 1 | 2 | 3;
+      image: SourceImage;
+    }
   | { type: "replaceActiveSlot"; image: SourceImage }
   | { type: "resetActiveSlot" }
   | { type: "exportStarted" }
@@ -262,8 +267,8 @@ export function reduceEditorState(
       };
     }
 
-    case "replaceActiveSlot": {
-      if (state.activeSlotIndex === null || state.selectedImages === null) {
+    case "replaceSlot": {
+      if (state.selectedImages === null) {
         return { state, cleanup: [] };
       }
 
@@ -273,18 +278,29 @@ export function reduceEditorState(
           sourceImages: appendSourceImageIfNew(state.sourceImages, action.image),
           selectedImages: replaceSelectedImage(
             state.selectedImages,
-            state.activeSlotIndex,
+            action.slotIndex,
             action.image
           ),
           slotAdjustments: replaceSlotAdjustment(
             state.slotAdjustments,
-            state.activeSlotIndex,
+            action.slotIndex,
             defaultSlotAdjustment()
           )
         },
         cleanup: []
       };
     }
+
+    case "replaceActiveSlot":
+      if (state.activeSlotIndex === null) {
+        return { state, cleanup: [] };
+      }
+
+      return reduceEditorState(state, {
+        type: "replaceSlot",
+        slotIndex: state.activeSlotIndex,
+        image: action.image
+      });
 
     case "resetActiveSlot":
       if (state.activeSlotIndex === null) {
