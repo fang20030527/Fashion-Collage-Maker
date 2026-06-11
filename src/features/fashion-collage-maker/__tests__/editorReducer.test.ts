@@ -311,6 +311,29 @@ describe("editor reducer", () => {
     expect(failed.cleanup).toEqual([]);
   });
 
+  it("moves from edit to result after a successful export", () => {
+    const editing = editorReducer(createInitialEditorState(), {
+      type: "uploadCompleted",
+      images: fourImages
+    });
+
+    const started = reduceEditorState(editing, { type: "exportStarted" });
+    const succeeded = reduceEditorState(started.state, {
+      type: "exportSucceeded",
+      objectUrl: "blob:export-1"
+    });
+
+    expect(started.state.step).toBe("edit");
+    expect(started.state.exportState).toBe("rendering");
+    expect(started.state.exportBlobUrl).toBeNull();
+    expect(started.cleanup).toEqual([]);
+    expect(succeeded.state.step).toBe("result");
+    expect(succeeded.state.selectedImages).toEqual(fourImages);
+    expect(succeeded.state.exportState).toBe("success");
+    expect(succeeded.state.exportBlobUrl).toBe("blob:export-1");
+    expect(succeeded.cleanup).toEqual([]);
+  });
+
   it("starts over by clearing images, edits, active slot, and export result", () => {
     const result = {
       ...editorReducer(createInitialEditorState(), {
