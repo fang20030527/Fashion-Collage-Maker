@@ -2,7 +2,7 @@
 
 ## Release Gate
 
-MVP release is blocked until every required row in the status table has a recorded result. Any unchecked, pending, or failed required row blocks release unless it links to a follow-up change or includes an explicit release-blocking note.
+MVP release is blocked until every required row in the status table has a recorded result. Any unchecked, pending, or failed required row blocks release. A failed row may be marked non-blocking only when the release owner records an explicit approved waiver or de-scope decision in the notes.
 
 Required rows:
 
@@ -33,7 +33,8 @@ Required rows:
 
 - Use 4 JPG images for desktop browser full-flow checks.
 - Use 4 recent phone photos for iOS Safari and Android Chrome checks.
-- Use 4 images close to 15MB each for pressure testing. Each file should be under the product limit unless the specific case is validating the file-too-large error.
+- Use 4 images close to 15MB each for pressure testing. Each file should be under the product limit.
+- Prepare 1 separate image over 15MB only for the file-too-large validation case.
 - Prefer images with mixed portrait and landscape orientation so orientation mistakes are visible.
 - Include at least one bright image edge and one dark image edge to make exposed slot background, transparent areas, and jagged obvious edges easier to see.
 
@@ -161,16 +162,16 @@ Follow-up or release-blocking note:
 
 Steps:
 
-1. Prepare 4 image files close to 15MB each.
+1. Prepare 4 image files close to 15MB each and under the product limit.
 2. Open `/fashion-collage-maker`.
 3. Upload all 4 large images together.
 4. Confirm validation accepts files that are within the 15MB limit.
-5. Confirm any file over the 15MB limit is rejected with visible error text.
-6. Wait for image decoding and normalization to finish.
-7. Confirm all 4 accepted images appear in the preview.
-8. Switch through all 4 templates.
-9. Export PNG.
-10. Confirm export succeeds or a visible error clearly explains the failure.
+5. Wait for image decoding and normalization to finish.
+6. Confirm all 4 accepted images appear in the preview.
+7. Switch through all 4 templates.
+8. Export PNG.
+9. Confirm export succeeds or a visible error clearly explains the failure.
+10. In a separate upload attempt, include 1 image over 15MB and confirm it is rejected with visible error text.
 
 Expected result:
 
@@ -238,4 +239,4 @@ Checks:
 | 2026-06-11 | `npm test` | Pass | Vitest completed with 8 test files and 61 tests passing. |
 | 2026-06-11 | `npm run build` | Pass | Next.js production build completed successfully. |
 
-No real Desktop Safari, iOS Safari, or Android Chrome checks were completed in this environment when this checklist was created. Those rows must be filled by testers using the named browsers/devices before MVP release.
+No real Desktop Chrome, Desktop Safari, iOS Safari, or Android Chrome full-flow checks were completed in this environment when this checklist was created. Those rows must be filled by testers using the named browsers/devices before MVP release.
