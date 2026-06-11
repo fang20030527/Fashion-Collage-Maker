@@ -71,6 +71,8 @@ export function FashionCollageMaker() {
   const uploadRequestToken = useRef(0);
   const replaceRequestToken = useRef(0);
   const exportRequestToken = useRef(0);
+  const isExportRendering = state.exportState === "rendering";
+  const isReplacementNormalizing = replacementStatus === "normalizing";
 
   useEffect(() => {
     const objectUrls = ownedObjectUrls.current;
@@ -285,7 +287,11 @@ export function FashionCollageMaker() {
   async function handleExport() {
     const exportState = stateRef.current;
 
-    if (exportState.selectedImages === null || exportState.exportState === "rendering") {
+    if (
+      exportState.selectedImages === null ||
+      exportState.exportState === "rendering" ||
+      isReplacingRef.current
+    ) {
       return;
     }
 
@@ -371,7 +377,8 @@ export function FashionCollageMaker() {
             <EditorStep
               state={state}
               messages={messages}
-              disabled={state.exportState === "rendering"}
+              disabled={isExportRendering}
+              exportDisabled={isExportRendering || isReplacementNormalizing}
               replacementStatus={replacementStatus}
               onAction={dispatchEditorAction}
               onReplaceActiveSlot={handleReplaceActiveSlot}

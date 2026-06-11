@@ -12,6 +12,7 @@ type EditorStepProps = {
   state: EditorState;
   messages: string[];
   disabled: boolean;
+  exportDisabled: boolean;
   replacementStatus: "idle" | "normalizing";
   onAction: (action: EditorAction) => void;
   onReplaceActiveSlot: (file: File) => void;
@@ -39,6 +40,7 @@ export function EditorStep({
   state,
   messages,
   disabled,
+  exportDisabled,
   replacementStatus,
   onAction,
   onReplaceActiveSlot,
@@ -50,6 +52,7 @@ export function EditorStep({
     BACKGROUND_PRESETS.find((preset) => preset.color === state.backgroundColor)?.name ??
     "Custom color";
   const selectedImages = state.selectedImages;
+  const isReplacing = replacementStatus === "normalizing";
 
   if (selectedImages === null) {
     return (
@@ -114,7 +117,7 @@ export function EditorStep({
             activeSlotIndex={state.activeSlotIndex}
             adjustment={getActiveAdjustment(state)}
             disabled={disabled}
-            isReplacing={replacementStatus === "normalizing"}
+            isReplacing={isReplacing}
             onAction={onAction}
             onReplaceFile={onReplaceActiveSlot}
           />
@@ -134,6 +137,11 @@ export function EditorStep({
                 Preparing export. Editing controls are disabled until it finishes.
               </p>
             )}
+            {isReplacing && (
+              <p className={styles.status} role="status">
+                Replacing photo. Export will be available when it finishes.
+              </p>
+            )}
             {state.exportState === "error" && (
               <div className={styles.errors} role="alert">
                 <p>Export failed. Retry or start over.</p>
@@ -143,10 +151,12 @@ export function EditorStep({
               className={styles.continueButton}
               type="button"
               onClick={onExport}
-              disabled={state.exportState === "rendering"}
+              disabled={exportDisabled}
             >
               {state.exportState === "rendering"
                 ? "Preparing export"
+                : isReplacing
+                  ? "Replacing photo"
                 : state.exportState === "error"
                   ? "Retry export"
                   : "Export PNG"}
