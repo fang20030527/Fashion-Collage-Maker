@@ -6,18 +6,39 @@ import styles from "../FashionCollageMaker.module.css";
 type ResultStepProps = {
   exportBlobUrl: string;
   onBackToEdit: () => void;
+  onFeedbackChange: (feedback: {
+    rating: number | null;
+    hasNotes: boolean;
+  }) => void;
   onStartOver: () => void;
 };
 
 export function ResultStep({
   exportBlobUrl,
   onBackToEdit,
+  onFeedbackChange,
   onStartOver
 }: ResultStepProps) {
   const [rating, setRating] = useState<number | null>(null);
   const [feedback, setFeedback] = useState("");
   const feedbackId = useId();
   const filename = formatExportFilename();
+
+  function handleRatingChange(nextRating: number) {
+    setRating(nextRating);
+    onFeedbackChange({
+      rating: nextRating,
+      hasNotes: feedback.trim().length > 0
+    });
+  }
+
+  function handleFeedbackChange(nextFeedback: string) {
+    setFeedback(nextFeedback);
+    onFeedbackChange({
+      rating,
+      hasNotes: nextFeedback.trim().length > 0
+    });
+  }
 
   return (
     <section className={styles.resultScreen} aria-labelledby="result-title">
@@ -69,7 +90,7 @@ export function ResultStep({
                 type="button"
                 role="radio"
                 aria-checked={rating === value}
-                onClick={() => setRating(value)}
+                onClick={() => handleRatingChange(value)}
               >
                 {value}
               </button>
@@ -84,7 +105,7 @@ export function ResultStep({
             value={feedback}
             rows={5}
             placeholder="Optional"
-            onChange={(event) => setFeedback(event.currentTarget.value)}
+            onChange={(event) => handleFeedbackChange(event.currentTarget.value)}
           />
           <p className={styles.mutedText}>Feedback stays on this device.</p>
         </aside>

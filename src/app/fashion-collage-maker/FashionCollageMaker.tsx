@@ -9,6 +9,7 @@ import { SelectStep } from "@/features/fashion-collage-maker/components/SelectSt
 import { UploadStep } from "@/features/fashion-collage-maker/components/UploadStep";
 import { REQUIRED_IMAGE_COUNT } from "@/features/fashion-collage-maker/constants";
 import { renderCollageToCanvas } from "@/features/fashion-collage-maker/canvasRenderer";
+import { trackEvent } from "@/features/fashion-collage-maker/analytics";
 import {
   createInitialEditorState,
   reduceEditorState,
@@ -29,6 +30,10 @@ import type {
 
 type UploadStatus = "idle" | "normalizing";
 type ReplacementStatus = "idle" | "normalizing";
+type LocalFeedbackChange = {
+  rating: number | null;
+  hasNotes: boolean;
+};
 
 function revokeImages(images: SourceImage[]) {
   images.forEach((image) => URL.revokeObjectURL(image.objectUrl));
@@ -56,6 +61,13 @@ function isImageSelected(selectedImages: SelectedImages | null, image: SourceIma
 
 function canDispatchDuringExport(action: EditorAction) {
   return action.type === "exportSucceeded" || action.type === "exportFailed";
+}
+
+function shouldWarnBeforeUnload(state: EditorState) {
+  return (
+    (state.step === "edit" && state.selectedImages !== null) ||
+    (state.step === "result" && state.exportBlobUrl !== null)
+  );
 }
 
 export function FashionCollageMaker() {
@@ -88,6 +100,23 @@ export function FashionCollageMaker() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!shouldWarnBeforeUnload(state)) {
+      return;
+    }
+
+    function handleBeforeUnload(event: BeforeUnloadEvent) {
+      event.preventDefault();
+      event.returnValue = "";
+    }
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, [state]);
+
   function dispatchEditorAction(action: EditorAction) {
     if (
       stateRef.current.exportState === "rendering" &&
@@ -96,11 +125,21 @@ export function FashionCollageMaker() {
       return;
     }
 
-    const reduction = reduceEditorState(stateRef.current, action);
+    const previousState = stateRef.current;
+    const reduction = reduceEditorState(previousState, action);
 
     stateRef.current = reduction.state;
     setState(reduction.state);
     applyEditorCleanup(reduction.cleanup, ownedObjectUrls);
+
+    if (
+      action.type === "switchTemplate" &&
+      reduction.state.templateId !== previousState.templateId
+    ) {
+      trackEvent("template_selected", {
+        templateId: reduction.state.templateId
+      });
+    }
   }
 
   function revokeUncommittedImages(images: SourceImage[]) {
@@ -176,6 +215,10 @@ export function FashionCollageMaker() {
 
       setMessages(nextMessages);
       dispatchEditorAction({ type: "uploadCompleted", images: normalizedImages });
+      trackEvent("upload_completed", {
+        imageCount: normalizedImages.length,
+        step: stateRef.current.step
+      });
     } catch {
       if (requestToken !== uploadRequestToken.current) {
         return;
@@ -324,11 +367,24 @@ export function FashionCollageMaker() {
       }
 
       dispatchEditorAction({ type: "exportSucceeded", objectUrl });
+      trackEvent("export_succeeded", {
+        templateId: exportState.templateId
+      });
     } catch {
       if (requestToken === exportRequestToken.current) {
         dispatchEditorAction({ type: "exportFailed" });
+        trackEvent("export_failed", {
+          templateId: exportState.templateId
+        });
       }
     }
+  }
+
+  function handleLocalFeedbackChange(feedback: LocalFeedbackChange) {
+    trackEvent("local_feedback_changed", {
+      rating: feedback.rating,
+      hasNotes: feedback.hasNotes
+    });
   }
 
   function handleBackToEdit() {
@@ -391,6 +447,7 @@ export function FashionCollageMaker() {
             <ResultStep
               exportBlobUrl={state.exportBlobUrl}
               onBackToEdit={handleBackToEdit}
+              onFeedbackChange={handleLocalFeedbackChange}
               onStartOver={handleStartOver}
             />
           )}

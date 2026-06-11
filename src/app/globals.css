@@ -31,15 +31,17 @@ a {
   color: inherit;
 }
 
-.home {
+.home,
+.privacy-page {
   display: grid;
   min-height: 100vh;
   padding: 32px;
   place-items: center;
 }
 
-.home__content {
-  max-width: 560px;
+.home__content,
+.privacy-page__content {
+  max-width: 640px;
 }
 
 .home__eyebrow {
@@ -50,13 +52,15 @@ a {
   text-transform: uppercase;
 }
 
-.home h1 {
+.home h1,
+.privacy-page h1 {
   margin: 0;
   font-size: clamp(2.25rem, 7vw, 4.75rem);
   line-height: 0.95;
 }
 
-.home p {
+.home p,
+.privacy-page p {
   color: var(--muted);
   font-size: 1.125rem;
   line-height: 1.6;
