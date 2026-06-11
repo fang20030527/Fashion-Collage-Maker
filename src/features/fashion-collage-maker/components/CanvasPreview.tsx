@@ -17,6 +17,7 @@ const PREVIEW_HEIGHT = 1250;
 type CanvasPreviewProps = {
   activeSlotIndex: EditorState["activeSlotIndex"];
   backgroundColor: string;
+  disabled: boolean;
   selectedImages: SelectedImages;
   slotAdjustments: SlotAdjustments;
   template: TemplateConfig;
@@ -86,6 +87,7 @@ function clampPan(value: number) {
 export function CanvasPreview({
   activeSlotIndex,
   backgroundColor,
+  disabled,
   selectedImages,
   slotAdjustments,
   template,
@@ -98,6 +100,10 @@ export function CanvasPreview({
     event: React.PointerEvent<HTMLButtonElement>,
     slotIndex: 0 | 1 | 2 | 3
   ) {
+    if (disabled) {
+      return;
+    }
+
     if (!event.isPrimary) {
       return;
     }
@@ -123,6 +129,11 @@ export function CanvasPreview({
   function handlePointerMove(event: React.PointerEvent<HTMLButtonElement>) {
     const drag = dragState.current;
 
+    if (disabled) {
+      dragState.current = null;
+      return;
+    }
+
     if (drag === null || drag.pointerId !== event.pointerId) {
       return;
     }
@@ -136,6 +147,11 @@ export function CanvasPreview({
   }
 
   function stopDragging(event: React.PointerEvent<HTMLButtonElement>) {
+    if (disabled) {
+      dragState.current = null;
+      return;
+    }
+
     if (dragState.current?.pointerId !== event.pointerId) {
       return;
     }
@@ -162,6 +178,8 @@ export function CanvasPreview({
                 isActive ? styles.previewSlotActive : ""
               }`}
               type="button"
+              disabled={disabled}
+              aria-disabled={disabled}
               style={getSlotStyle(slot)}
               onPointerDown={(event) => handlePointerDown(event, slotIndex)}
               onPointerMove={handlePointerMove}

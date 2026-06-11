@@ -7,6 +7,7 @@ import type { EditorState, SlotAdjustment } from "../types";
 type SlotControlsProps = {
   activeSlotIndex: EditorState["activeSlotIndex"];
   adjustment: SlotAdjustment | null;
+  disabled: boolean;
   isReplacing: boolean;
   onAction: (action: EditorAction) => void;
   onReplaceFile: (file: File) => void;
@@ -15,6 +16,7 @@ type SlotControlsProps = {
 export function SlotControls({
   activeSlotIndex,
   adjustment,
+  disabled,
   isReplacing,
   onAction,
   onReplaceFile
@@ -43,7 +45,7 @@ export function SlotControls({
 
     event.currentTarget.value = "";
 
-    if (file === null || isReplacing) {
+    if (file === null || isReplacing || disabled) {
       return;
     }
 
@@ -67,6 +69,7 @@ export function SlotControls({
         max="2.5"
         step="0.01"
         value={adjustment.zoom}
+        disabled={disabled}
         onChange={handleZoomChange}
       />
 
@@ -77,24 +80,27 @@ export function SlotControls({
           className={styles.fileInput}
           type="file"
           accept="image/jpeg,image/png,image/webp,image/*"
-          disabled={isReplacing}
+          disabled={isReplacing || disabled}
           tabIndex={-1}
           onChange={handleReplaceChange}
         />
         <button
           className={`${styles.secondaryButton} ${
-            isReplacing ? styles.secondaryButtonDisabled : ""
+            isReplacing || disabled ? styles.secondaryButtonDisabled : ""
           }`}
           type="button"
-          disabled={isReplacing}
+          disabled={isReplacing || disabled}
           aria-controls={replaceInputId}
           onClick={() => replaceInputRef.current?.click()}
         >
           {isReplacing ? "Replacing..." : "Replace"}
         </button>
         <button
-          className={styles.secondaryButton}
+          className={`${styles.secondaryButton} ${
+            disabled ? styles.secondaryButtonDisabled : ""
+          }`}
           type="button"
+          disabled={disabled}
           onClick={() => onAction({ type: "resetActiveSlot" })}
         >
           Reset crop

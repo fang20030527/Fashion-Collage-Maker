@@ -3,11 +3,13 @@ import styles from "../FashionCollageMaker.module.css";
 
 type BackgroundPickerProps = {
   activeColor: string;
+  disabled: boolean;
   onChange: (color: string) => void;
 };
 
 export function BackgroundPicker({
   activeColor,
+  disabled,
   onChange
 }: BackgroundPickerProps) {
   return (
@@ -28,6 +30,7 @@ export function BackgroundPicker({
               aria-checked={isSelected}
               aria-label={preset.name}
               title={preset.name}
+              disabled={disabled}
               style={{ backgroundColor: preset.color }}
               onClick={() => onChange(preset.color)}
             />

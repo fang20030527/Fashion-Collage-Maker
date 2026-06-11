@@ -11,6 +11,7 @@ import { TemplatePicker } from "./TemplatePicker";
 type EditorStepProps = {
   state: EditorState;
   messages: string[];
+  disabled: boolean;
   replacementStatus: "idle" | "normalizing";
   onAction: (action: EditorAction) => void;
   onReplaceActiveSlot: (file: File) => void;
@@ -37,6 +38,7 @@ function getActiveAdjustment(state: EditorState): SlotAdjustment | null {
 export function EditorStep({
   state,
   messages,
+  disabled,
   replacementStatus,
   onAction,
   onReplaceActiveSlot,
@@ -76,6 +78,7 @@ export function EditorStep({
           <CanvasPreview
             activeSlotIndex={state.activeSlotIndex}
             backgroundColor={state.backgroundColor}
+            disabled={disabled}
             selectedImages={selectedImages}
             slotAdjustments={state.slotAdjustments}
             template={template}
@@ -97,17 +100,20 @@ export function EditorStep({
         <aside className={styles.controlsPanel} aria-label="Collage controls">
           <TemplatePicker
             activeTemplateId={template.id}
+            disabled={disabled}
             onChange={(templateId) =>
               onAction({ type: "switchTemplate", templateId })
             }
           />
           <BackgroundPicker
             activeColor={state.backgroundColor}
+            disabled={disabled}
             onChange={(color) => onAction({ type: "changeBackground", color })}
           />
           <SlotControls
             activeSlotIndex={state.activeSlotIndex}
             adjustment={getActiveAdjustment(state)}
+            disabled={disabled}
             isReplacing={replacementStatus === "normalizing"}
             onAction={onAction}
             onReplaceFile={onReplaceActiveSlot}
@@ -123,6 +129,11 @@ export function EditorStep({
 
           <section className={styles.controlGroup} aria-labelledby="export-title">
             <h2 id="export-title">Export</h2>
+            {disabled && (
+              <p className={styles.status} role="status">
+                Preparing export. Editing controls are disabled until it finishes.
+              </p>
+            )}
             {state.exportState === "error" && (
               <div className={styles.errors} role="alert">
                 <p>Export failed. Retry or start over.</p>

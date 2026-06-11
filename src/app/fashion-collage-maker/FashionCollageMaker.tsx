@@ -54,6 +54,10 @@ function isImageSelected(selectedImages: SelectedImages | null, image: SourceIma
   );
 }
 
+function canDispatchDuringExport(action: EditorAction) {
+  return action.type === "exportSucceeded" || action.type === "exportFailed";
+}
+
 export function FashionCollageMaker() {
   const [state, setState] = useState<EditorState>(createInitialEditorState);
   const [messages, setMessages] = useState<string[]>([]);
@@ -83,6 +87,13 @@ export function FashionCollageMaker() {
   }, []);
 
   function dispatchEditorAction(action: EditorAction) {
+    if (
+      stateRef.current.exportState === "rendering" &&
+      !canDispatchDuringExport(action)
+    ) {
+      return;
+    }
+
     const reduction = reduceEditorState(stateRef.current, action);
 
     stateRef.current = reduction.state;
@@ -185,6 +196,10 @@ export function FashionCollageMaker() {
   }
 
   async function handleReplaceActiveSlot(file: File) {
+    if (stateRef.current.exportState === "rendering") {
+      return;
+    }
+
     const targetSlotIndex = stateRef.current.activeSlotIndex;
     const previousImage =
       targetSlotIndex === null
@@ -316,6 +331,10 @@ export function FashionCollageMaker() {
   }
 
   function handleStartOver() {
+    if (stateRef.current.exportState === "rendering") {
+      return;
+    }
+
     uploadRequestToken.current += 1;
     replaceRequestToken.current += 1;
     exportRequestToken.current += 1;
@@ -352,6 +371,7 @@ export function FashionCollageMaker() {
             <EditorStep
               state={state}
               messages={messages}
+              disabled={state.exportState === "rendering"}
               replacementStatus={replacementStatus}
               onAction={dispatchEditorAction}
               onReplaceActiveSlot={handleReplaceActiveSlot}

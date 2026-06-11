@@ -5,11 +5,13 @@ import styles from "../FashionCollageMaker.module.css";
 
 type TemplatePickerProps = {
   activeTemplateId: string;
+  disabled: boolean;
   onChange: (templateId: string) => void;
 };
 
 export function TemplatePicker({
   activeTemplateId,
+  disabled,
   onChange
 }: TemplatePickerProps) {
   return (
@@ -28,6 +30,7 @@ export function TemplatePicker({
               type="button"
               role="radio"
               aria-checked={isSelected}
+              disabled={disabled}
               onClick={() => onChange(template.id)}
             >
               <span className={styles.templateThumb}>

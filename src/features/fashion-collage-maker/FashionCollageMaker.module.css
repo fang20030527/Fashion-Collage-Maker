@@ -460,6 +460,15 @@
   outline-offset: 3px;
 }
 
+.previewSlot:disabled {
+  cursor: wait;
+}
+
+.previewSlot:disabled:hover,
+.previewSlot:disabled:focus-visible {
+  outline: none;
+}
+
 .previewSlotActive {
   outline: 4px solid #1b6f68;
   outline-offset: 4px;
@@ -561,6 +570,11 @@
   outline: none;
 }
 
+.templateOption:disabled {
+  cursor: wait;
+  opacity: 0.72;
+}
+
 .templateOptionSelected {
   border-color: #191714;
   box-shadow: 0 0 0 3px #cfa275;
@@ -600,6 +614,11 @@
   border-color: #1b6f68;
   outline: 3px solid rgba(27, 111, 104, 0.2);
   outline-offset: 2px;
+}
+
+.swatchButton:disabled {
+  cursor: wait;
+  opacity: 0.72;
 }
 
 .swatchButtonSelected {
