@@ -190,7 +190,7 @@ describe("editor reducer", () => {
       fourImages[3]
     ]);
     expect(state.selectedImages).toHaveLength(REQUIRED_IMAGE_COUNT);
-    expect(state.sourceImages).toEqual([...fourImages, replacement]);
+    expect(state.sourceImages).toEqual(fourImages);
     expect(state.slotAdjustments[2]).toEqual({ panX: 0, panY: 0, zoom: 1 });
   });
 

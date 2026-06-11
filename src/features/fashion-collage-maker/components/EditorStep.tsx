@@ -15,6 +15,7 @@ type EditorStepProps = {
   onAction: (action: EditorAction) => void;
   onReplaceActiveSlot: (file: File) => void;
   onExport: () => void;
+  onStartOver: () => void;
 };
 
 function getSelectedSlotText(activeSlotIndex: EditorState["activeSlotIndex"]) {
@@ -39,7 +40,8 @@ export function EditorStep({
   replacementStatus,
   onAction,
   onReplaceActiveSlot,
-  onExport
+  onExport,
+  onStartOver
 }: EditorStepProps) {
   const template = getTemplateById(state.templateId);
   const backgroundName =
@@ -121,14 +123,32 @@ export function EditorStep({
 
           <section className={styles.controlGroup} aria-labelledby="export-title">
             <h2 id="export-title">Export</h2>
+            {state.exportState === "error" && (
+              <div className={styles.errors} role="alert">
+                <p>Export failed. Retry or start over.</p>
+              </div>
+            )}
             <button
               className={styles.continueButton}
               type="button"
               onClick={onExport}
               disabled={state.exportState === "rendering"}
             >
-              {state.exportState === "rendering" ? "Preparing export" : "Export image"}
+              {state.exportState === "rendering"
+                ? "Preparing export"
+                : state.exportState === "error"
+                  ? "Retry export"
+                  : "Export PNG"}
             </button>
+            {state.exportState === "error" && (
+              <button
+                className={styles.secondaryButton}
+                type="button"
+                onClick={onStartOver}
+              >
+                Start over
+              </button>
+            )}
           </section>
         </aside>
       </div>

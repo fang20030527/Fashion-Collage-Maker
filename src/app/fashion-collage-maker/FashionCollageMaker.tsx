@@ -4,9 +4,11 @@ import { useEffect, useRef, useState, type RefObject } from "react";
 
 import styles from "@/features/fashion-collage-maker/FashionCollageMaker.module.css";
 import { EditorStep } from "@/features/fashion-collage-maker/components/EditorStep";
+import { ResultStep } from "@/features/fashion-collage-maker/components/ResultStep";
 import { SelectStep } from "@/features/fashion-collage-maker/components/SelectStep";
 import { UploadStep } from "@/features/fashion-collage-maker/components/UploadStep";
 import { REQUIRED_IMAGE_COUNT } from "@/features/fashion-collage-maker/constants";
+import { renderCollageToCanvas } from "@/features/fashion-collage-maker/canvasRenderer";
 import {
   createInitialEditorState,
   reduceEditorState,
@@ -18,6 +20,7 @@ import {
   normalizeImageFiles
 } from "@/features/fashion-collage-maker/imageNormalization";
 import { validateImageFiles } from "@/features/fashion-collage-maker/imageValidation";
+import { getTemplateById } from "@/features/fashion-collage-maker/templates";
 import type {
   EditorState,
   SelectedImages,
@@ -63,6 +66,7 @@ export function FashionCollageMaker() {
   const isReplacingRef = useRef(false);
   const uploadRequestToken = useRef(0);
   const replaceRequestToken = useRef(0);
+  const exportRequestToken = useRef(0);
 
   useEffect(() => {
     const objectUrls = ownedObjectUrls.current;
@@ -70,6 +74,7 @@ export function FashionCollageMaker() {
     return () => {
       uploadRequestToken.current += 1;
       replaceRequestToken.current += 1;
+      exportRequestToken.current += 1;
       isNormalizingRef.current = false;
       isReplacingRef.current = false;
       objectUrls.forEach((objectUrl) => URL.revokeObjectURL(objectUrl));
@@ -90,6 +95,11 @@ export function FashionCollageMaker() {
     images.forEach((image) => {
       ownedObjectUrls.current.delete(image.objectUrl);
     });
+  }
+
+  function revokeAllOwnedObjectUrls() {
+    ownedObjectUrls.current.forEach((objectUrl) => URL.revokeObjectURL(objectUrl));
+    ownedObjectUrls.current.clear();
   }
 
   async function handleFiles(files: File[]) {
@@ -251,8 +261,71 @@ export function FashionCollageMaker() {
     }
   }
 
-  function handleExportPlaceholder() {
-    setMessages(["Export rendering is coming in the next task."]);
+  function canvasToPngBlob(canvas: HTMLCanvasElement) {
+    return new Promise<Blob | null>((resolve) => {
+      canvas.toBlob((blob) => resolve(blob), "image/png");
+    });
+  }
+
+  async function handleExport() {
+    const exportState = stateRef.current;
+
+    if (exportState.selectedImages === null || exportState.exportState === "rendering") {
+      return;
+    }
+
+    exportRequestToken.current += 1;
+    const requestToken = exportRequestToken.current;
+
+    setMessages([]);
+    dispatchEditorAction({ type: "exportStarted" });
+
+    try {
+      const canvas = await renderCollageToCanvas({
+        template: getTemplateById(exportState.templateId),
+        selectedImages: exportState.selectedImages,
+        slotAdjustments: exportState.slotAdjustments,
+        backgroundColor: exportState.backgroundColor
+      });
+      const blob = await canvasToPngBlob(canvas);
+
+      if (blob === null) {
+        throw new Error("Canvas PNG encoding failed.");
+      }
+
+      const objectUrl = URL.createObjectURL(blob);
+      ownedObjectUrls.current.add(objectUrl);
+
+      if (requestToken !== exportRequestToken.current) {
+        URL.revokeObjectURL(objectUrl);
+        ownedObjectUrls.current.delete(objectUrl);
+        return;
+      }
+
+      dispatchEditorAction({ type: "exportSucceeded", objectUrl });
+    } catch {
+      if (requestToken === exportRequestToken.current) {
+        dispatchEditorAction({ type: "exportFailed" });
+      }
+    }
+  }
+
+  function handleBackToEdit() {
+    setMessages([]);
+    dispatchEditorAction({ type: "backToEdit" });
+  }
+
+  function handleStartOver() {
+    uploadRequestToken.current += 1;
+    replaceRequestToken.current += 1;
+    exportRequestToken.current += 1;
+    isNormalizingRef.current = false;
+    isReplacingRef.current = false;
+    setUploadStatus("idle");
+    setReplacementStatus("idle");
+    setMessages([]);
+    dispatchEditorAction({ type: "startOver" });
+    revokeAllOwnedObjectUrls();
   }
 
   return (
@@ -274,14 +347,27 @@ export function FashionCollageMaker() {
       )}
 
       {(state.step === "edit" || state.step === "result") && (
-        <EditorStep
-          state={state}
-          messages={messages}
-          replacementStatus={replacementStatus}
-          onAction={dispatchEditorAction}
-          onReplaceActiveSlot={handleReplaceActiveSlot}
-          onExport={handleExportPlaceholder}
-        />
+        <>
+          {state.step === "edit" && (
+            <EditorStep
+              state={state}
+              messages={messages}
+              replacementStatus={replacementStatus}
+              onAction={dispatchEditorAction}
+              onReplaceActiveSlot={handleReplaceActiveSlot}
+              onExport={handleExport}
+              onStartOver={handleStartOver}
+            />
+          )}
+
+          {state.step === "result" && state.exportBlobUrl !== null && (
+            <ResultStep
+              exportBlobUrl={state.exportBlobUrl}
+              onBackToEdit={handleBackToEdit}
+              onStartOver={handleStartOver}
+            />
+          )}
+        </>
       )}
     </main>
   );

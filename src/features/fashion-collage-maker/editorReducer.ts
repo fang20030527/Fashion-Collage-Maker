@@ -110,17 +110,6 @@ function replaceSelectedImage(
   return nextSelectedImages;
 }
 
-function appendSourceImageIfNew(
-  sourceImages: SourceImage[],
-  image: SourceImage
-): SourceImage[] {
-  if (sourceImages.some((sourceImage) => sourceImage.id === image.id)) {
-    return sourceImages;
-  }
-
-  return [...sourceImages, image];
-}
-
 function canExport(state: EditorState): state is EditorState & {
   selectedImages: SelectedImages;
 } {
@@ -275,7 +264,6 @@ export function reduceEditorState(
       return {
         state: {
           ...state,
-          sourceImages: appendSourceImageIfNew(state.sourceImages, action.image),
           selectedImages: replaceSelectedImage(
             state.selectedImages,
             action.slotIndex,
