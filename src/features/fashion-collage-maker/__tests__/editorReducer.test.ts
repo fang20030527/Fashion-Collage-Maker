@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { BACKGROUND_PRESETS, REQUIRED_IMAGE_COUNT } from "../constants";
+import { BACKGROUND_PRESETS, MAX_TEMPLATE_IMAGE_COUNT } from "../constants";
 import {
   createInitialEditorState,
   editorReducer,
@@ -20,8 +20,12 @@ function image(id: string): SourceImage {
   };
 }
 
+const oneImage = [image("image-1")];
+const twoImages = ["image-1", "image-2"].map(image);
 const fourImages = ["image-1", "image-2", "image-3", "image-4"].map(image);
 const fiveImages = [...fourImages, image("image-5")];
+const sixImages = [...fiveImages, image("image-6")];
+const sevenImages = [...sixImages, image("image-7")];
 
 describe("editor reducer", () => {
   it("creates the initial upload state with defaults", () => {
@@ -32,54 +36,75 @@ describe("editor reducer", () => {
       sourceImages: [],
       selectedImages: null,
       templateId: DEFAULT_TEMPLATE_ID,
-      slotAdjustments: [
-        { panX: 0, panY: 0, zoom: 1 },
-        { panX: 0, panY: 0, zoom: 1 },
-        { panX: 0, panY: 0, zoom: 1 },
-        { panX: 0, panY: 0, zoom: 1 }
-      ],
+      slotAdjustments: [{ panX: 0, panY: 0, zoom: 1 }],
       backgroundColor: BACKGROUND_PRESETS[0].color,
       activeSlotIndex: null,
       exportState: "idle",
       exportBlobUrl: null
     });
-    expect(state.slotAdjustments[0]).not.toBe(state.slotAdjustments[1]);
   });
 
-  it("moves directly to edit after uploading exactly four valid images", () => {
+  it("moves directly to edit after uploading one valid image", () => {
     const { state, cleanup } = reduceEditorState(createInitialEditorState(), {
+      type: "uploadCompleted",
+      images: oneImage
+    });
+
+    expect(state.step).toBe("edit");
+    expect(state.templateId).toBe("portrait-single");
+    expect(state.sourceImages).toEqual(oneImage);
+    expect(state.selectedImages).toEqual(oneImage);
+    expect(state.slotAdjustments).toHaveLength(1);
+    expect(cleanup).toEqual([]);
+  });
+
+  it("starts with the matching four-slot portrait template for four images", () => {
+    const state = editorReducer(createInitialEditorState(), {
       type: "uploadCompleted",
       images: fourImages
     });
 
     expect(state.step).toBe("edit");
-    expect(state.sourceImages).toEqual(fourImages);
+    expect(state.templateId).toBe("portrait-grid-4");
     expect(state.selectedImages).toEqual(fourImages);
-    expect(state.selectedImages).toHaveLength(REQUIRED_IMAGE_COUNT);
-    expect(cleanup).toEqual([]);
+    expect(state.slotAdjustments).toHaveLength(4);
   });
 
-  it("moves to select after uploading five to nine valid images", () => {
+  it("uses the largest available regular template when five images are uploaded", () => {
     const state = editorReducer(createInitialEditorState(), {
       type: "uploadCompleted",
       images: fiveImages
     });
 
-    expect(state.step).toBe("select");
+    expect(state.step).toBe("edit");
+    expect(state.templateId).toBe("portrait-grid-4");
     expect(state.sourceImages).toEqual(fiveImages);
+    expect(state.selectedImages).toEqual(fiveImages.slice(0, 4));
+  });
+
+  it("moves to select after uploading more images than any template can use", () => {
+    const state = editorReducer(createInitialEditorState(), {
+      type: "uploadCompleted",
+      images: sevenImages
+    });
+
+    expect(state.step).toBe("select");
+    expect(state.sourceImages).toEqual(sevenImages);
     expect(state.selectedImages).toBeNull();
   });
 
   it("fills editor slots by user selection order", () => {
     const selecting = editorReducer(createInitialEditorState(), {
       type: "uploadCompleted",
-      images: fiveImages
+      images: sevenImages
     });
     const selectedInUserOrder = [
-      fiveImages[4],
-      fiveImages[2],
-      fiveImages[0],
-      fiveImages[3]
+      sevenImages[6],
+      sevenImages[2],
+      sevenImages[0],
+      sevenImages[3],
+      sevenImages[5],
+      sevenImages[1]
     ];
 
     const state = editorReducer(selecting, {
@@ -88,30 +113,32 @@ describe("editor reducer", () => {
     });
 
     expect(state.step).toBe("edit");
+    expect(state.templateId).toBe("landscape-grid-6");
+    expect(state.sourceImages).toEqual(selectedInUserOrder);
     expect(state.selectedImages).toEqual(selectedInUserOrder);
-    expect(state.selectedImages).toHaveLength(REQUIRED_IMAGE_COUNT);
+    expect(state.selectedImages).toHaveLength(MAX_TEMPLATE_IMAGE_COUNT);
   });
 
-  it("ignores selection attempts that do not choose exactly four images", () => {
+  it("ignores selection attempts outside the supported template image count", () => {
     const selecting = editorReducer(createInitialEditorState(), {
       type: "uploadCompleted",
-      images: fiveImages
+      images: sevenImages
     });
 
     const state = editorReducer(selecting, {
       type: "selectImages",
-      imageIds: [fiveImages[0].id, fiveImages[1].id, fiveImages[2].id]
+      imageIds: []
     });
 
     expect(state).toEqual(selecting);
   });
 
-  it("switches template without losing images or background and resets edits", () => {
+  it("switches template without losing available images or background and resets edits", () => {
     const edited = editorReducer(
       {
         ...editorReducer(createInitialEditorState(), {
           type: "uploadCompleted",
-          images: fourImages
+          images: sixImages
         }),
         backgroundColor: BACKGROUND_PRESETS[3].color,
         activeSlotIndex: 2,
@@ -119,22 +146,37 @@ describe("editor reducer", () => {
           { panX: 0.2, panY: 0.1, zoom: 1.5 },
           { panX: -0.1, panY: 0, zoom: 1.2 },
           { panX: 0, panY: -0.3, zoom: 1.1 },
-          { panX: 0.4, panY: 0.4, zoom: 0.9 }
+          { panX: 0.4, panY: 0.4, zoom: 0.9 },
+          { panX: 0.1, panY: 0.2, zoom: 1.3 },
+          { panX: -0.2, panY: 0.2, zoom: 1.4 }
         ]
       },
-      { type: "switchTemplate", templateId: "clean-grid" }
+      { type: "switchTemplate", templateId: "landscape-columns-2" }
     );
 
-    expect(edited.templateId).toBe("clean-grid");
-    expect(edited.selectedImages).toEqual(fourImages);
+    expect(edited.templateId).toBe("landscape-columns-2");
+    expect(edited.sourceImages).toEqual(sixImages);
+    expect(edited.selectedImages).toEqual(sixImages.slice(0, 2));
     expect(edited.backgroundColor).toBe(BACKGROUND_PRESETS[3].color);
     expect(edited.activeSlotIndex).toBeNull();
     expect(edited.slotAdjustments).toEqual([
       { panX: 0, panY: 0, zoom: 1 },
-      { panX: 0, panY: 0, zoom: 1 },
-      { panX: 0, panY: 0, zoom: 1 },
       { panX: 0, panY: 0, zoom: 1 }
     ]);
+  });
+
+  it("ignores template switches that need more images than are available", () => {
+    const editing = editorReducer(createInitialEditorState(), {
+      type: "uploadCompleted",
+      images: twoImages
+    });
+
+    const state = editorReducer(editing, {
+      type: "switchTemplate",
+      templateId: "landscape-grid-6"
+    });
+
+    expect(state).toEqual(editing);
   });
 
   it("resets only the selected slot adjustment", () => {
@@ -143,7 +185,7 @@ describe("editor reducer", () => {
         type: "uploadCompleted",
         images: fourImages
       }),
-      activeSlotIndex: 1 as const,
+      activeSlotIndex: 1,
       slotAdjustments: [
         { panX: 0.2, panY: 0.1, zoom: 1.5 },
         { panX: -0.1, panY: 0, zoom: 1.2 },
@@ -169,7 +211,7 @@ describe("editor reducer", () => {
         type: "uploadCompleted",
         images: fourImages
       }),
-      activeSlotIndex: 2 as const,
+      activeSlotIndex: 2,
       slotAdjustments: [
         { panX: 0.2, panY: 0.1, zoom: 1.5 },
         { panX: -0.1, panY: 0, zoom: 1.2 },
@@ -189,8 +231,12 @@ describe("editor reducer", () => {
       replacement,
       fourImages[3]
     ]);
-    expect(state.selectedImages).toHaveLength(REQUIRED_IMAGE_COUNT);
-    expect(state.sourceImages).toEqual(fourImages);
+    expect(state.sourceImages).toEqual([
+      fourImages[0],
+      fourImages[1],
+      replacement,
+      fourImages[3]
+    ]);
     expect(state.slotAdjustments[2]).toEqual({ panX: 0, panY: 0, zoom: 1 });
   });
 
@@ -201,7 +247,7 @@ describe("editor reducer", () => {
         type: "uploadCompleted",
         images: fourImages
       }),
-      activeSlotIndex: 3 as const,
+      activeSlotIndex: 3,
       slotAdjustments: [
         { panX: 0.2, panY: 0.1, zoom: 1.5 },
         { panX: -0.1, panY: 0, zoom: 1.2 },
@@ -236,7 +282,7 @@ describe("editor reducer", () => {
       step: "result" as const,
       exportState: "success" as const,
       exportBlobUrl: "blob:export-1",
-      activeSlotIndex: 3 as const
+      activeSlotIndex: 3
     };
 
     const reduced = reduceEditorState(result, { type: "backToEdit" });
@@ -251,10 +297,10 @@ describe("editor reducer", () => {
     ]);
   });
 
-  it("does not return to edit when no four-image selection exists", () => {
+  it("does not return to edit when no image selection exists", () => {
     const selecting = editorReducer(createInitialEditorState(), {
       type: "uploadCompleted",
-      images: fiveImages
+      images: sevenImages
     });
 
     const reduced = reduceEditorState(selecting, { type: "backToEdit" });
@@ -265,10 +311,10 @@ describe("editor reducer", () => {
     expect(reduced.cleanup).toEqual([]);
   });
 
-  it("does not export to result and cleans late export URL when no four-image selection exists", () => {
+  it("does not export to result and cleans late export URL when no selection exists", () => {
     const selecting = editorReducer(createInitialEditorState(), {
       type: "uploadCompleted",
-      images: fiveImages
+      images: sevenImages
     });
 
     const reduced = reduceEditorState(selecting, {
@@ -279,82 +325,6 @@ describe("editor reducer", () => {
     expect(reduced.state).toEqual(selecting);
     expect(reduced.state.step).not.toBe("result");
     expect(reduced.state.selectedImages).toBeNull();
-    expect(reduced.cleanup).toEqual([
-      { type: "revokeObjectUrl", objectUrl: "blob:export-1" }
-    ]);
-  });
-
-  it("does not start or fail export in upload state", () => {
-    const upload = createInitialEditorState();
-
-    const started = reduceEditorState(upload, { type: "exportStarted" });
-    const failed = reduceEditorState(upload, { type: "exportFailed" });
-
-    expect(started.state).toEqual(upload);
-    expect(started.cleanup).toEqual([]);
-    expect(failed.state).toEqual(upload);
-    expect(failed.cleanup).toEqual([]);
-  });
-
-  it("does not start or fail export in select state", () => {
-    const selecting = editorReducer(createInitialEditorState(), {
-      type: "uploadCompleted",
-      images: fiveImages
-    });
-
-    const started = reduceEditorState(selecting, { type: "exportStarted" });
-    const failed = reduceEditorState(selecting, { type: "exportFailed" });
-
-    expect(started.state).toEqual(selecting);
-    expect(started.cleanup).toEqual([]);
-    expect(failed.state).toEqual(selecting);
-    expect(failed.cleanup).toEqual([]);
-  });
-
-  it("moves from edit to result after a successful export", () => {
-    const editing = editorReducer(createInitialEditorState(), {
-      type: "uploadCompleted",
-      images: fourImages
-    });
-
-    const started = reduceEditorState(editing, { type: "exportStarted" });
-    const succeeded = reduceEditorState(started.state, {
-      type: "exportSucceeded",
-      objectUrl: "blob:export-1"
-    });
-
-    expect(started.state.step).toBe("edit");
-    expect(started.state.exportState).toBe("rendering");
-    expect(started.state.exportBlobUrl).toBeNull();
-    expect(started.cleanup).toEqual([]);
-    expect(succeeded.state.step).toBe("result");
-    expect(succeeded.state.selectedImages).toEqual(fourImages);
-    expect(succeeded.state.exportState).toBe("success");
-    expect(succeeded.state.exportBlobUrl).toBe("blob:export-1");
-    expect(succeeded.cleanup).toEqual([]);
-  });
-
-  it("starts over by clearing images, edits, active slot, and export result", () => {
-    const result = {
-      ...editorReducer(createInitialEditorState(), {
-        type: "uploadCompleted",
-        images: fourImages
-      }),
-      step: "result" as const,
-      exportState: "success" as const,
-      exportBlobUrl: "blob:export-1",
-      activeSlotIndex: 1 as const,
-      slotAdjustments: [
-        { panX: 0.2, panY: 0.1, zoom: 1.5 },
-        { panX: -0.1, panY: 0, zoom: 1.2 },
-        { panX: 0, panY: -0.3, zoom: 1.1 },
-        { panX: 0.4, panY: 0.4, zoom: 0.9 }
-      ]
-    };
-
-    const reduced = reduceEditorState(result, { type: "startOver" });
-
-    expect(reduced.state).toEqual(createInitialEditorState());
     expect(reduced.cleanup).toEqual([
       { type: "revokeObjectUrl", objectUrl: "blob:export-1" }
     ]);

@@ -1,9 +1,7 @@
-import { BACKGROUND_PRESETS } from "../constants";
 import type { EditorAction } from "../editorReducer";
 import { getTemplateById } from "../templates";
 import styles from "../FashionCollageMaker.module.css";
 import type { EditorState, SlotAdjustment } from "../types";
-import { BackgroundPicker } from "./BackgroundPicker";
 import { CanvasPreview } from "./CanvasPreview";
 import { SlotControls } from "./SlotControls";
 import { TemplatePicker } from "./TemplatePicker";
@@ -22,10 +20,10 @@ type EditorStepProps = {
 
 function getSelectedSlotText(activeSlotIndex: EditorState["activeSlotIndex"]) {
   if (activeSlotIndex === null) {
-    return "No slot selected. Select a photo in the preview to adjust crop and zoom.";
+    return "No layer selected. Select a photo layer in the preview to adjust crop and zoom.";
   }
 
-  return `Slot ${activeSlotIndex + 1} selected. Drag inside the selected photo to adjust its crop.`;
+  return `Layer ${activeSlotIndex + 1} selected. Drag inside the selected photo to adjust its crop.`;
 }
 
 function getActiveAdjustment(state: EditorState): SlotAdjustment | null {
@@ -48,9 +46,6 @@ export function EditorStep({
   onStartOver
 }: EditorStepProps) {
   const template = getTemplateById(state.templateId);
-  const backgroundName =
-    BACKGROUND_PRESETS.find((preset) => preset.color === state.backgroundColor)?.name ??
-    "Custom color";
   const selectedImages = state.selectedImages;
   const isReplacing = replacementStatus === "normalizing";
 
@@ -93,9 +88,7 @@ export function EditorStep({
             }
           />
           <div className={styles.editorStateText} aria-live="polite">
-            <p>
-              Template: {template.name}. Background: {backgroundName}.
-            </p>
+            <p>Template: {template.name}.</p>
             <p>{getSelectedSlotText(state.activeSlotIndex)}</p>
           </div>
         </div>
@@ -103,15 +96,11 @@ export function EditorStep({
         <aside className={styles.controlsPanel} aria-label="Collage controls">
           <TemplatePicker
             activeTemplateId={template.id}
+            availableImageCount={state.sourceImages.length}
             disabled={disabled}
             onChange={(templateId) =>
               onAction({ type: "switchTemplate", templateId })
             }
-          />
-          <BackgroundPicker
-            activeColor={state.backgroundColor}
-            disabled={disabled}
-            onChange={(color) => onAction({ type: "changeBackground", color })}
           />
           <SlotControls
             activeSlotIndex={state.activeSlotIndex}

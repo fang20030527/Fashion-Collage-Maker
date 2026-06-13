@@ -7,7 +7,7 @@ import { EditorStep } from "@/features/fashion-collage-maker/components/EditorSt
 import { ResultStep } from "@/features/fashion-collage-maker/components/ResultStep";
 import { SelectStep } from "@/features/fashion-collage-maker/components/SelectStep";
 import { UploadStep } from "@/features/fashion-collage-maker/components/UploadStep";
-import { REQUIRED_IMAGE_COUNT } from "@/features/fashion-collage-maker/constants";
+import { MIN_UPLOAD_IMAGE_COUNT } from "@/features/fashion-collage-maker/constants";
 import { renderCollageToCanvas } from "@/features/fashion-collage-maker/canvasRenderer";
 import { trackEvent } from "@/features/fashion-collage-maker/analytics";
 import {
@@ -22,11 +22,7 @@ import {
 } from "@/features/fashion-collage-maker/imageNormalization";
 import { validateImageFiles } from "@/features/fashion-collage-maker/imageValidation";
 import { getTemplateById } from "@/features/fashion-collage-maker/templates";
-import type {
-  EditorState,
-  SelectedImages,
-  SourceImage
-} from "@/features/fashion-collage-maker/types";
+import type { EditorState, SourceImage } from "@/features/fashion-collage-maker/types";
 
 type UploadStatus = "idle" | "normalizing";
 type ReplacementStatus = "idle" | "normalizing";
@@ -51,7 +47,7 @@ function applyEditorCleanup(
   });
 }
 
-function isImageSelected(selectedImages: SelectedImages | null, image: SourceImage) {
+function isImageSelected(selectedImages: SourceImage[] | null, image: SourceImage) {
   return (
     selectedImages?.some(
       (selectedImage) => selectedImage.objectUrl === image.objectUrl
@@ -165,7 +161,7 @@ export function FashionCollageMaker() {
       ...validation.rejectedFiles.map((issue) => issue.message)
     ];
 
-    if (validation.filesToNormalize.length < REQUIRED_IMAGE_COUNT) {
+    if (validation.filesToNormalize.length < MIN_UPLOAD_IMAGE_COUNT) {
       setMessages(validationMessages);
       return;
     }
@@ -204,11 +200,11 @@ export function FashionCollageMaker() {
         return;
       }
 
-      if (normalizedImages.length < REQUIRED_IMAGE_COUNT) {
+      if (normalizedImages.length < MIN_UPLOAD_IMAGE_COUNT) {
         revokeUncommittedImages(normalizedImages);
         setMessages([
           ...nextMessages,
-          `Add at least ${REQUIRED_IMAGE_COUNT} valid images to continue.`
+          `Add at least ${MIN_UPLOAD_IMAGE_COUNT} valid image to continue.`
         ]);
         return;
       }

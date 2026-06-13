@@ -1,15 +1,21 @@
 import {
   BACKGROUND_PRESETS,
   MAX_UPLOAD_COUNT,
-  REQUIRED_IMAGE_COUNT
+  MIN_UPLOAD_IMAGE_COUNT
 } from "./constants";
-import { DEFAULT_TEMPLATE_ID, getTemplateById } from "./templates";
+import {
+  DEFAULT_TEMPLATE_ID,
+  getTemplateById,
+  getTemplateForImageCount,
+  MAX_TEMPLATE_SLOT_COUNT
+} from "./templates";
 import type {
   EditorState,
   SelectedImages,
   SlotAdjustment,
   SlotAdjustments,
-  SourceImage
+  SourceImage,
+  TemplateConfig
 } from "./types";
 
 export type EditorCleanup = {
@@ -29,7 +35,7 @@ export type EditorAction =
     }
   | {
       type: "replaceSlot";
-      slotIndex: 0 | 1 | 2 | 3;
+      slotIndex: number;
       image: SourceImage;
     }
   | { type: "replaceActiveSlot"; image: SourceImage }
@@ -53,21 +59,8 @@ function defaultSlotAdjustment(): SlotAdjustment {
   return { panX: 0, panY: 0, zoom: 1 };
 }
 
-function defaultSlotAdjustments(): SlotAdjustments {
-  return [
-    defaultSlotAdjustment(),
-    defaultSlotAdjustment(),
-    defaultSlotAdjustment(),
-    defaultSlotAdjustment()
-  ];
-}
-
-function toSelectedImages(images: SourceImage[]): SelectedImages | null {
-  if (images.length !== REQUIRED_IMAGE_COUNT) {
-    return null;
-  }
-
-  return [images[0], images[1], images[2], images[3]];
+function defaultSlotAdjustments(slotCount: number): SlotAdjustments {
+  return Array.from({ length: slotCount }, defaultSlotAdjustment);
 }
 
 function cleanupExportUrl(state: EditorState): EditorCleanup[] {
@@ -90,33 +83,122 @@ function clearExportState(state: EditorState): EditorState {
   };
 }
 
+function selectImagesForTemplate(
+  images: readonly SourceImage[],
+  template: TemplateConfig
+): SelectedImages | null {
+  if (images.length < template.slots.length) {
+    return null;
+  }
+
+  return images.slice(0, template.slots.length);
+}
+
+function selectImagesFromIds(
+  sourceImages: readonly SourceImage[],
+  imageIds: readonly string[]
+): SelectedImages | null {
+  const selectedImages = imageIds.flatMap((imageId) => {
+    const sourceImage = sourceImages.find((candidate) => candidate.id === imageId);
+
+    return sourceImage === undefined ? [] : [sourceImage];
+  });
+
+  return selectedImages.length === imageIds.length ? selectedImages : null;
+}
+
+function getImagesForTemplate(
+  state: EditorState,
+  template: TemplateConfig
+): SelectedImages | null {
+  if (state.selectedImages && state.selectedImages.length >= template.slots.length) {
+    return state.selectedImages.slice(0, template.slots.length);
+  }
+
+  return selectImagesForTemplate(state.sourceImages, template);
+}
+
 function replaceSlotAdjustment(
   adjustments: SlotAdjustments,
-  slotIndex: 0 | 1 | 2 | 3,
+  slotIndex: number,
   adjustment: SlotAdjustment
 ): SlotAdjustments {
-  const nextAdjustments: SlotAdjustments = [...adjustments];
+  if (!hasIndex(adjustments, slotIndex)) {
+    return adjustments;
+  }
+
+  const nextAdjustments = [...adjustments];
   nextAdjustments[slotIndex] = adjustment;
   return nextAdjustments;
 }
 
 function replaceSelectedImage(
   selectedImages: SelectedImages,
-  slotIndex: 0 | 1 | 2 | 3,
+  slotIndex: number,
   image: SourceImage
 ): SelectedImages {
-  const nextSelectedImages: SelectedImages = [...selectedImages];
+  if (!hasIndex(selectedImages, slotIndex)) {
+    return selectedImages;
+  }
+
+  const nextSelectedImages = [...selectedImages];
   nextSelectedImages[slotIndex] = image;
   return nextSelectedImages;
+}
+
+function replaceSourceImage(
+  sourceImages: SourceImage[],
+  previousImage: SourceImage,
+  nextImage: SourceImage
+): SourceImage[] {
+  const sourceIndex = sourceImages.findIndex(
+    (image) => image.objectUrl === previousImage.objectUrl
+  );
+
+  if (sourceIndex === -1) {
+    return sourceImages;
+  }
+
+  const nextSourceImages = [...sourceImages];
+  nextSourceImages[sourceIndex] = nextImage;
+  return nextSourceImages;
+}
+
+function hasIndex<T>(items: readonly T[], index: number): index is number {
+  return Number.isInteger(index) && index >= 0 && index < items.length;
 }
 
 function canExport(state: EditorState): state is EditorState & {
   selectedImages: SelectedImages;
 } {
+  const template = getTemplateById(state.templateId);
+
   return (
     state.selectedImages !== null &&
+    state.selectedImages.length === template.slots.length &&
     (state.step === "edit" || state.step === "result")
   );
+}
+
+function canUseSelectionCount(count: number) {
+  return count >= MIN_UPLOAD_IMAGE_COUNT && count <= MAX_TEMPLATE_SLOT_COUNT;
+}
+
+function getEditingState(
+  state: EditorState,
+  images: SelectedImages,
+  template: TemplateConfig
+): EditorState {
+  return {
+    ...clearExportState(state),
+    step: "edit",
+    sourceImages: images,
+    selectedImages: selectImagesForTemplate(images, template),
+    templateId: template.id,
+    backgroundColor: template.defaultBackground,
+    activeSlotIndex: null,
+    slotAdjustments: defaultSlotAdjustments(template.slots.length)
+  };
 }
 
 export function createInitialEditorState(): EditorState {
@@ -127,7 +209,7 @@ export function createInitialEditorState(): EditorState {
     sourceImages: [],
     selectedImages: null,
     templateId: DEFAULT_TEMPLATE_ID,
-    slotAdjustments: defaultSlotAdjustments(),
+    slotAdjustments: defaultSlotAdjustments(template.slots.length),
     backgroundColor: template.defaultBackground,
     activeSlotIndex: null,
     exportState: "idle",
@@ -141,55 +223,72 @@ export function reduceEditorState(
 ): EditorReduction {
   switch (action.type) {
     case "uploadCompleted": {
-      const selectedImages = toSelectedImages(action.images);
+      if (!canUseSelectionCount(action.images.length)) {
+        if (
+          action.images.length > MAX_TEMPLATE_SLOT_COUNT &&
+          action.images.length <= MAX_UPLOAD_COUNT
+        ) {
+          return {
+            state: {
+              ...clearExportState(state),
+              step: "select",
+              sourceImages: action.images,
+              selectedImages: null,
+              activeSlotIndex: null,
+              slotAdjustments: defaultSlotAdjustments(
+                getTemplateById(DEFAULT_TEMPLATE_ID).slots.length
+              )
+            },
+            cleanup: cleanupExportUrl(state)
+          };
+        }
 
-      if (selectedImages !== null) {
-        return {
-          state: {
-            ...clearExportState(state),
-            step: "edit",
-            sourceImages: action.images,
-            selectedImages,
-            activeSlotIndex: null,
-            slotAdjustments: defaultSlotAdjustments()
-          },
-          cleanup: cleanupExportUrl(state)
-        };
-      }
-
-      if (
-        action.images.length > REQUIRED_IMAGE_COUNT &&
-        action.images.length <= MAX_UPLOAD_COUNT
-      ) {
-        return {
-          state: {
-            ...clearExportState(state),
-            step: "select",
-            sourceImages: action.images,
-            selectedImages: null,
-            activeSlotIndex: null,
-            slotAdjustments: defaultSlotAdjustments()
-          },
-          cleanup: cleanupExportUrl(state)
-        };
-      }
-
-      return { state, cleanup: [] };
-    }
-
-    case "selectImages": {
-      if (action.imageIds.length !== REQUIRED_IMAGE_COUNT) {
         return { state, cleanup: [] };
       }
 
-      const selectedImages = toSelectedImages(
-        action.imageIds.flatMap((imageId) => {
-          const sourceImage = state.sourceImages.find(
-            (candidate) => candidate.id === imageId
-          );
-          return sourceImage === undefined ? [] : [sourceImage];
-        })
+      const template = getTemplateForImageCount(action.images.length);
+      const selectedImages = selectImagesForTemplate(action.images, template);
+
+      if (selectedImages === null) {
+        return { state, cleanup: [] };
+      }
+
+      return {
+        state: getEditingState(state, action.images, template),
+        cleanup: cleanupExportUrl(state)
+      };
+    }
+
+    case "selectImages": {
+      if (!canUseSelectionCount(action.imageIds.length)) {
+        return { state, cleanup: [] };
+      }
+
+      const selectedSourceImages = selectImagesFromIds(
+        state.sourceImages,
+        action.imageIds
       );
+
+      if (selectedSourceImages === null) {
+        return { state, cleanup: [] };
+      }
+
+      const template = getTemplateForImageCount(selectedSourceImages.length);
+      const selectedImages = selectImagesForTemplate(selectedSourceImages, template);
+
+      if (selectedImages === null) {
+        return { state, cleanup: [] };
+      }
+
+      return {
+        state: getEditingState(state, selectedSourceImages, template),
+        cleanup: cleanupExportUrl(state)
+      };
+    }
+
+    case "switchTemplate": {
+      const template = getTemplateById(action.templateId);
+      const selectedImages = getImagesForTemplate(state, template);
 
       if (selectedImages === null) {
         return { state, cleanup: [] };
@@ -198,26 +297,14 @@ export function reduceEditorState(
       return {
         state: {
           ...state,
-          step: "edit",
+          templateId: template.id,
           selectedImages,
-          activeSlotIndex: null,
-          exportState: "idle",
-          exportBlobUrl: null
-        },
-        cleanup: cleanupExportUrl(state)
-      };
-    }
-
-    case "switchTemplate":
-      return {
-        state: {
-          ...state,
-          templateId: getTemplateById(action.templateId).id,
-          slotAdjustments: defaultSlotAdjustments(),
+          slotAdjustments: defaultSlotAdjustments(template.slots.length),
           activeSlotIndex: null
         },
         cleanup: []
       };
+    }
 
     case "changeBackground":
       if (!presetColors.has(action.color)) {
@@ -229,14 +316,27 @@ export function reduceEditorState(
         cleanup: []
       };
 
-    case "selectActiveSlot":
+    case "selectActiveSlot": {
+      const template = getTemplateById(state.templateId);
+
+      if (
+        action.slotIndex !== null &&
+        !hasIndex(template.slots, action.slotIndex)
+      ) {
+        return { state, cleanup: [] };
+      }
+
       return {
         state: { ...state, activeSlotIndex: action.slotIndex },
         cleanup: []
       };
+    }
 
     case "updateActiveSlotAdjustment": {
-      if (state.activeSlotIndex === null) {
+      if (
+        state.activeSlotIndex === null ||
+        !hasIndex(state.slotAdjustments, state.activeSlotIndex)
+      ) {
         return { state, cleanup: [] };
       }
 
@@ -257,13 +357,20 @@ export function reduceEditorState(
     }
 
     case "replaceSlot": {
-      if (state.selectedImages === null) {
+      if (state.selectedImages === null || !hasIndex(state.selectedImages, action.slotIndex)) {
         return { state, cleanup: [] };
       }
+
+      const previousImage = state.selectedImages[action.slotIndex];
 
       return {
         state: {
           ...state,
+          sourceImages: replaceSourceImage(
+            state.sourceImages,
+            previousImage,
+            action.image
+          ),
           selectedImages: replaceSelectedImage(
             state.selectedImages,
             action.slotIndex,

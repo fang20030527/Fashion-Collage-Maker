@@ -35,7 +35,8 @@ describe("fashion collage render math", () => {
       x: 0.08,
       y: 0.06,
       width: 0.58,
-      height: 0.64
+      height: 0.64,
+      zIndex: 1
     };
 
     expect(slotToPixelRect(slot, 2160, 2700)).toEqual({
@@ -137,7 +138,10 @@ describe("fashion collage render math", () => {
   });
 
   it("returns draw rectangles in the target canvas coordinate space", () => {
-    const slotRect = slotToPixelRect(TEMPLATES[0].slots[0], 2160, 2700);
+    const template =
+      TEMPLATES.find((candidate) => candidate.id === "portrait-grid-4") ??
+      TEMPLATES[0];
+    const slotRect = slotToPixelRect(template.slots[0], 2160, 2700);
     const drawRect = getCoverDrawRect({
       imageSize: { width: 1200, height: 1800 },
       slotRect,
@@ -145,16 +149,16 @@ describe("fashion collage render math", () => {
     });
 
     expect(slotRect).toEqual({
-      x: 172.8,
-      y: 162,
-      width: 1252.8,
-      height: 1728
+      x: 0,
+      y: 0,
+      width: 1080,
+      height: 1350
     });
     expectRectCloseTo(drawRect, {
-      x: 172.8,
-      y: -365.04,
-      width: 1503.36,
-      height: 2255.04
+      x: 0,
+      y: -594,
+      width: 1296,
+      height: 1944
     });
     expectSlotCovered(drawRect, slotRect);
   });
