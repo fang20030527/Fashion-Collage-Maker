@@ -11,7 +11,7 @@ export default function PrivacyPage() {
   return (
     <main className="privacy-page">
       <section className="privacy-page__content" aria-labelledby="privacy-title">
-        <p className="home__eyebrow">Privacy</p>
+        <p className="privacy-page__eyebrow">Privacy</p>
         <h1 id="privacy-title">Your photos stay in your browser.</h1>
         <p>
           Fashion Collage Maker prepares, edits, and exports your collage locally
@@ -26,7 +26,7 @@ export default function PrivacyPage() {
           The feedback box on the result screen is local to the page. It is not
           submitted or saved.
         </p>
-        <Link className="home__link" href="/fashion-collage-maker">
+        <Link className="privacy-page__link" href="/">
           Back to the collage maker
         </Link>
       </section>

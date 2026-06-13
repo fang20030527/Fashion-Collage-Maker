@@ -7,7 +7,7 @@ export const metadata: Metadata = {
     template: "%s | Fashion Collage Maker"
   },
   description:
-    "Create an editorial outfit collage from 4 photos in your browser. Photos are not uploaded.",
+    "Create a magazine-ready fashion collage from 1 to 6 photos in your browser. Photos are not uploaded.",
   applicationName: "Fashion Collage Maker",
   keywords: [
     "fashion collage maker",

@@ -32,7 +32,6 @@ a {
   color: inherit;
 }
 
-.home,
 .privacy-page {
   display: grid;
   min-height: 100vh;
@@ -45,14 +44,13 @@ a {
   background-size: 44px 44px;
 }
 
-.home__content,
 .privacy-page__content {
   max-width: 640px;
   padding-left: clamp(18px, 3vw, 30px);
   border-left: 6px solid var(--accent);
 }
 
-.home__eyebrow {
+.privacy-page__eyebrow {
   margin: 0 0 12px;
   color: var(--accent-strong);
   font-size: 0.875rem;
@@ -60,7 +58,6 @@ a {
   text-transform: uppercase;
 }
 
-.home h1,
 .privacy-page h1 {
   margin: 0;
   font-family: "Bodoni 72", Didot, Georgia, serif;
@@ -70,14 +67,13 @@ a {
   text-wrap: balance;
 }
 
-.home p,
 .privacy-page p {
   color: var(--muted);
   font-size: 1.125rem;
   line-height: 1.6;
 }
 
-.home__link {
+.privacy-page__link {
   display: inline-flex;
   align-items: center;
   min-height: 44px;
@@ -95,8 +91,8 @@ a {
     transform 160ms ease;
 }
 
-.home__link:focus-visible,
-.home__link:hover {
+.privacy-page__link:focus-visible,
+.privacy-page__link:hover {
   background: var(--accent-strong);
   border-color: var(--accent-strong);
   outline: none;
