@@ -6,8 +6,14 @@ import {
   type CanvasRenderInput,
   type RenderableSourceImage
 } from "../canvasRenderer";
-import { EXPORT_HEIGHT, EXPORT_WIDTH } from "../constants";
+import {
+  LANDSCAPE_EXPORT_HEIGHT,
+  LANDSCAPE_EXPORT_WIDTH,
+  PORTRAIT_EXPORT_HEIGHT,
+  PORTRAIT_EXPORT_WIDTH
+} from "../constants";
 import { TEMPLATES } from "../templates";
+import type { TemplateConfig } from "../types";
 
 type RecordedCall = {
   name: string;
@@ -26,23 +32,34 @@ function makeImage(id: string, element: CanvasImageSource): RenderableSourceImag
   };
 }
 
+function makeImages(count: number): RenderableSourceImage[] {
+  return Array.from({ length: count }, (_, index) =>
+    makeImage(`image-${index + 1}`, {
+      tag: `image-${index + 1}`
+    } as unknown as CanvasImageSource)
+  );
+}
+
+function makeAdjustments(count: number) {
+  return Array.from({ length: count }, (_, index) => ({
+    panX: index === 1 ? 0.1 : 0,
+    panY: index === 2 ? -0.1 : 0,
+    zoom: index === 3 ? 1.2 : 1
+  }));
+}
+
 function makeInput(
-  selectedImages: CanvasRenderInput["selectedImages"] = [
-    makeImage("image-1", { tag: "image-1" } as unknown as CanvasImageSource),
-    makeImage("image-2", { tag: "image-2" } as unknown as CanvasImageSource),
-    makeImage("image-3", { tag: "image-3" } as unknown as CanvasImageSource),
-    makeImage("image-4", { tag: "image-4" } as unknown as CanvasImageSource)
-  ]
+  template: TemplateConfig =
+    TEMPLATES.find((candidate) => candidate.id === "landscape-grid-6") ??
+    TEMPLATES[0],
+  selectedImages: CanvasRenderInput["selectedImages"] = makeImages(
+    template.slots.length
+  )
 ): CanvasRenderInput {
   return {
-    template: TEMPLATES[2],
+    template,
     selectedImages,
-    slotAdjustments: [
-      { panX: 0, panY: 0, zoom: 1 },
-      { panX: 0.1, panY: -0.1, zoom: 1.2 },
-      { panX: -0.15, panY: 0.2, zoom: 1.1 },
-      { panX: 0, panY: 0, zoom: 1 }
-    ],
+    slotAdjustments: makeAdjustments(template.slots.length),
     backgroundColor: "#F7F3ED"
   };
 }
@@ -111,29 +128,48 @@ afterEach(() => {
 });
 
 describe("fashion collage canvas renderer", () => {
-  it("renders to the export canvas dimensions", async () => {
+  it("renders to the active template export dimensions", async () => {
     const { canvas } = installMockCanvas();
+    const template =
+      TEMPLATES.find((candidate) => candidate.id === "landscape-grid-6") ??
+      TEMPLATES[0];
 
-    const renderedCanvas = await renderCollageToCanvas(makeInput());
+    const renderedCanvas = await renderCollageToCanvas(makeInput(template));
 
     expect(renderedCanvas).toBe(canvas);
-    expect(canvas.width).toBe(EXPORT_WIDTH);
-    expect(canvas.height).toBe(EXPORT_HEIGHT);
+    expect(canvas.width).toBe(LANDSCAPE_EXPORT_WIDTH);
+    expect(canvas.height).toBe(LANDSCAPE_EXPORT_HEIGHT);
+  });
+
+  it("uses portrait dimensions for portrait templates", async () => {
+    const { canvas } = installMockCanvas();
+    const template =
+      TEMPLATES.find((candidate) => candidate.id === "portrait-rows-3") ??
+      TEMPLATES[0];
+
+    await renderCollageToCanvas(makeInput(template));
+
+    expect(canvas.width).toBe(PORTRAIT_EXPORT_WIDTH);
+    expect(canvas.height).toBe(PORTRAIT_EXPORT_HEIGHT);
   });
 
   it("fills the solid background before drawing clipped image slots", async () => {
     const { calls } = installMockCanvas();
+    const input = makeInput();
 
-    await renderCollageToCanvas(makeInput());
+    await renderCollageToCanvas(input);
 
     expect(calls.slice(0, 2)).toEqual([
       { name: "fillStyle", args: ["#F7F3ED"] },
-      { name: "fillRect", args: [0, 0, EXPORT_WIDTH, EXPORT_HEIGHT] }
+      {
+        name: "fillRect",
+        args: [0, 0, input.template.canvasWidth, input.template.canvasHeight]
+      }
     ]);
-    expect(calls.filter((call) => call.name === "drawImage")).toHaveLength(4);
-    expect(calls.filter((call) => call.name === "clip")).toHaveLength(4);
-    expect(calls.filter((call) => call.name === "save")).toHaveLength(7);
-    expect(calls.filter((call) => call.name === "restore")).toHaveLength(7);
+    expect(calls.filter((call) => call.name === "drawImage")).toHaveLength(6);
+    expect(calls.filter((call) => call.name === "clip")).toHaveLength(6);
+    expect(calls.filter((call) => call.name === "save")).toHaveLength(12);
+    expect(calls.filter((call) => call.name === "restore")).toHaveLength(12);
 
     const firstClipIndex = calls.findIndex((call) => call.name === "clip");
     const firstDrawIndex = calls.findIndex((call) => call.name === "drawImage");
@@ -142,25 +178,50 @@ describe("fashion collage canvas renderer", () => {
     expect(firstDrawIndex).toBeGreaterThan(firstClipIndex);
   });
 
-  it("applies template rotation, shadows, and borders when slots request them", async () => {
+  it("draws regular grid templates without shadows or white borders", async () => {
     const { calls } = installMockCanvas();
 
     await renderCollageToCanvas(makeInput());
 
-    expect(calls.some((call) => call.name === "rotate" && call.args[0] !== 0))
-      .toBe(true);
-    expect(calls.filter((call) => call.name === "shadowColor")).toHaveLength(3);
-    expect(calls.filter((call) => call.name === "strokeStyle")).toHaveLength(4);
-    expect(calls.filter((call) => call.name === "lineWidth")).toHaveLength(4);
-    expect(calls.filter((call) => call.name === "strokeRect")).toHaveLength(4);
+    expect(calls.filter((call) => call.name === "shadowColor")).toHaveLength(0);
+    expect(calls.filter((call) => call.name === "strokeStyle")).toHaveLength(0);
+    expect(calls.filter((call) => call.name === "lineWidth")).toHaveLength(0);
+    expect(calls.filter((call) => call.name === "strokeRect")).toHaveLength(0);
+  });
+
+  it("draws image layers by template z-index rather than slot array order", async () => {
+    const { calls } = installMockCanvas();
+    const layerTemplate: TemplateConfig = {
+      id: "z-index-test",
+      name: "Z-index Test",
+      orientation: "portrait",
+      canvasWidth: PORTRAIT_EXPORT_WIDTH,
+      canvasHeight: PORTRAIT_EXPORT_HEIGHT,
+      defaultBackground: "#F7F3ED",
+      slots: [
+        { id: "layer-1", x: 0, y: 0, width: 0.4, height: 0.4, zIndex: 3 },
+        { id: "layer-2", x: 0, y: 0, width: 0.4, height: 0.4, zIndex: 1 },
+        { id: "layer-3", x: 0, y: 0, width: 0.4, height: 0.4, zIndex: 4 },
+        { id: "layer-4", x: 0, y: 0, width: 0.4, height: 0.4, zIndex: 2 }
+      ]
+    };
+
+    await renderCollageToCanvas(makeInput(layerTemplate, makeImages(4)));
+
+    const drawnImageTags = calls
+      .filter((call) => call.name === "drawImage")
+      .map((call) => (call.args[0] as { tag: string }).tag);
+
+    expect(drawnImageTags).toEqual(["image-2", "image-4", "image-1", "image-3"]);
   });
 
   it("throws export_failed when a selected image has no drawable source", async () => {
     installMockCanvas();
+    const template =
+      TEMPLATES.find((candidate) => candidate.id === "portrait-grid-4") ??
+      TEMPLATES[0];
     const images: CanvasRenderInput["selectedImages"] = [
-      makeImage("image-1", { tag: "image-1" } as unknown as CanvasImageSource),
-      makeImage("image-2", { tag: "image-2" } as unknown as CanvasImageSource),
-      makeImage("image-3", { tag: "image-3" } as unknown as CanvasImageSource),
+      ...makeImages(3),
       {
         id: "missing",
         objectUrl: "",
@@ -171,20 +232,20 @@ describe("fashion collage canvas renderer", () => {
       }
     ];
 
-    await expect(renderCollageToCanvas(makeInput(images))).rejects.toMatchObject({
-      code: "export_failed"
-    });
+    await expect(renderCollageToCanvas(makeInput(template, images))).rejects
+      .toMatchObject({
+        code: "export_failed"
+      });
   });
 
   it("throws export_failed when runtime input is missing a selected image", async () => {
     installMockCanvas();
+    const template =
+      TEMPLATES.find((candidate) => candidate.id === "portrait-grid-4") ??
+      TEMPLATES[0];
     const malformedInput = {
-      ...makeInput(),
-      selectedImages: [
-        makeImage("image-1", { tag: "image-1" } as unknown as CanvasImageSource),
-        makeImage("image-2", { tag: "image-2" } as unknown as CanvasImageSource),
-        makeImage("image-3", { tag: "image-3" } as unknown as CanvasImageSource)
-      ]
+      ...makeInput(template),
+      selectedImages: makeImages(3)
     } as unknown as CanvasRenderInput;
 
     await expect(renderCollageToCanvas(malformedInput)).rejects.toBeInstanceOf(

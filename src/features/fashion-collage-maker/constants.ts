@@ -1,10 +1,13 @@
 import type { BackgroundPreset } from "./types";
 
-export const EXPORT_WIDTH = 2160;
-export const EXPORT_HEIGHT = 2700;
 export const MAX_FILE_SIZE_BYTES = 15 * 1024 * 1024;
 export const MAX_UPLOAD_COUNT = 9;
-export const REQUIRED_IMAGE_COUNT = 4;
+export const MIN_UPLOAD_IMAGE_COUNT = 1;
+export const MAX_TEMPLATE_IMAGE_COUNT = 6;
+export const PORTRAIT_EXPORT_WIDTH = 2400;
+export const PORTRAIT_EXPORT_HEIGHT = 3200;
+export const LANDSCAPE_EXPORT_WIDTH = 3200;
+export const LANDSCAPE_EXPORT_HEIGHT = 2400;
 
 export const SUPPORTED_MIME_TYPES = [
   "image/jpeg",

@@ -27,11 +27,13 @@ export function SlotControls({
   if (activeSlotIndex === null || adjustment === null) {
     return (
       <section className={styles.controlGroup} aria-labelledby="slot-controls-title">
-        <h2 id="slot-controls-title">Selected slot</h2>
-        <p className={styles.mutedText}>Select a photo on the preview to adjust it.</p>
+        <h2 id="slot-controls-title">Selected layer</h2>
+        <p className={styles.mutedText}>Select a photo layer on the preview to adjust it.</p>
       </section>
     );
   }
+
+  const slotActionDisabled = disabled;
 
   function handleZoomChange(event: React.ChangeEvent<HTMLInputElement>) {
     onAction({
@@ -45,7 +47,7 @@ export function SlotControls({
 
     event.currentTarget.value = "";
 
-    if (file === null || isReplacing || disabled) {
+    if (file === null || isReplacing || slotActionDisabled) {
       return;
     }
 
@@ -54,8 +56,8 @@ export function SlotControls({
 
   return (
     <section className={styles.controlGroup} aria-labelledby="slot-controls-title">
-      <h2 id="slot-controls-title">Selected slot</h2>
-      <p className={styles.mutedText}>Slot {activeSlotIndex + 1} is active.</p>
+      <h2 id="slot-controls-title">Selected layer</h2>
+      <p className={styles.mutedText}>Layer {activeSlotIndex + 1} is active.</p>
 
       <label className={styles.rangeLabel} htmlFor="slot-zoom">
         Zoom
@@ -69,7 +71,7 @@ export function SlotControls({
         max="2.5"
         step="0.01"
         value={adjustment.zoom}
-        disabled={disabled}
+        disabled={slotActionDisabled}
         onChange={handleZoomChange}
       />
 
@@ -80,16 +82,16 @@ export function SlotControls({
           className={styles.fileInput}
           type="file"
           accept="image/jpeg,image/png,image/webp,image/*"
-          disabled={isReplacing || disabled}
+          disabled={isReplacing || slotActionDisabled}
           tabIndex={-1}
           onChange={handleReplaceChange}
         />
         <button
           className={`${styles.secondaryButton} ${
-            isReplacing || disabled ? styles.secondaryButtonDisabled : ""
+            isReplacing || slotActionDisabled ? styles.secondaryButtonDisabled : ""
           }`}
           type="button"
-          disabled={isReplacing || disabled}
+          disabled={isReplacing || slotActionDisabled}
           aria-controls={replaceInputId}
           onClick={() => replaceInputRef.current?.click()}
         >
@@ -97,10 +99,10 @@ export function SlotControls({
         </button>
         <button
           className={`${styles.secondaryButton} ${
-            disabled ? styles.secondaryButtonDisabled : ""
+            slotActionDisabled ? styles.secondaryButtonDisabled : ""
           }`}
           type="button"
-          disabled={disabled}
+          disabled={slotActionDisabled}
           onClick={() => onAction({ type: "resetActiveSlot" })}
         >
           Reset crop

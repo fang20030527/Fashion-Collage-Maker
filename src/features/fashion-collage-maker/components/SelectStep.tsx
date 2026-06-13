@@ -1,7 +1,7 @@
 import Image from "next/image";
 import { useMemo, useState } from "react";
 
-import { REQUIRED_IMAGE_COUNT } from "../constants";
+import { MAX_TEMPLATE_IMAGE_COUNT } from "../constants";
 import styles from "../FashionCollageMaker.module.css";
 import type { SourceImage } from "../types";
 
@@ -20,8 +20,8 @@ function getSelectionNumber(imageIds: string[], imageId: string) {
 export function SelectStep({ images, messages, onContinue }: SelectStepProps) {
   const [selectedImageIds, setSelectedImageIds] = useState<string[]>([]);
   const selectedCount = selectedImageIds.length;
-  const canContinue = selectedCount === REQUIRED_IMAGE_COUNT;
-  const countText = `${selectedCount} of ${REQUIRED_IMAGE_COUNT} selected`;
+  const canContinue = selectedCount === MAX_TEMPLATE_IMAGE_COUNT;
+  const countText = `${selectedCount} of ${MAX_TEMPLATE_IMAGE_COUNT} selected`;
   const orderedSelection = useMemo(() => selectedImageIds, [selectedImageIds]);
 
   function toggleImage(imageId: string) {
@@ -30,7 +30,7 @@ export function SelectStep({ images, messages, onContinue }: SelectStepProps) {
         return currentIds.filter((currentId) => currentId !== imageId);
       }
 
-      if (currentIds.length === REQUIRED_IMAGE_COUNT) {
+      if (currentIds.length === MAX_TEMPLATE_IMAGE_COUNT) {
         return currentIds;
       }
 
@@ -42,10 +42,10 @@ export function SelectStep({ images, messages, onContinue }: SelectStepProps) {
     <section className={styles.selectScreen} aria-labelledby="select-title">
       <header className={styles.selectHeader}>
         <div>
-          <p className={styles.kicker}>Choose the final four</p>
+          <p className={styles.kicker}>Curate the final set</p>
           <h1 id="select-title">Fashion Collage Maker</h1>
           <p className={styles.subtitle}>
-            Create an editorial outfit collage from 4 photos.
+            Pick the photos with the strongest rhythm for the largest layout.
           </p>
           <p className={styles.privacy}>Your photos stay in your browser.</p>
         </div>

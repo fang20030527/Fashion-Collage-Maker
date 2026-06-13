@@ -52,7 +52,7 @@ Steps:
 2. Upload exactly 4 JPG images.
 3. Confirm the app advances to the editor without requiring image selection.
 4. Confirm all 4 uploaded images appear in the main preview.
-5. Switch through all 4 templates.
+5. Switch through all 5 templates.
 6. For each template, confirm the preview updates and all 4 images remain visible.
 7. Adjust at least one slot crop by dragging in the preview.
 8. Adjust zoom for at least one slot.
@@ -82,7 +82,7 @@ Steps:
 2. Upload exactly 4 JPG images.
 3. Confirm the app advances to the editor without requiring image selection.
 4. Confirm all 4 uploaded images appear in the main preview.
-5. Switch through all 4 templates.
+5. Switch through all 5 templates.
 6. For each template, confirm the preview updates and all 4 images remain visible.
 7. Adjust at least one slot crop by dragging in the preview.
 8. Adjust zoom for at least one slot.
@@ -114,7 +114,7 @@ Steps:
 4. Confirm all 4 photos appear in the main preview with correct orientation.
 5. Drag crop position inside at least 2 different slots.
 6. Adjust zoom for at least 2 different slots.
-7. Switch through all 4 templates and confirm the preview remains usable.
+7. Switch through all 5 templates and confirm the preview remains usable.
 8. Export PNG.
 9. Confirm visible export progress, success, or error text appears.
 10. Open or save the exported PNG if the browser permits.
@@ -140,7 +140,7 @@ Steps:
 2. Upload exactly 4 phone photos from the photo picker.
 3. Confirm the app advances to the editor.
 4. Confirm all 4 photos appear in the main preview with correct orientation.
-5. Switch through all 4 templates and confirm the preview remains usable.
+5. Switch through all 5 templates and confirm the preview remains usable.
 6. Export PNG.
 7. Confirm visible export progress, success, or error text appears.
 8. Open or save the exported PNG if the browser permits.
@@ -168,7 +168,7 @@ Steps:
 4. Confirm validation accepts files that are within the 15MB limit.
 5. Wait for image decoding and normalization to finish.
 6. Confirm all 4 accepted images appear in the preview.
-7. Switch through all 4 templates.
+7. Switch through all 5 templates.
 8. Export PNG.
 9. Confirm export succeeds or a visible error clearly explains the failure.
 10. In a separate upload attempt, include 1 image over 15MB and confirm it is rejected with visible error text.
@@ -236,7 +236,7 @@ Checks:
 | Date | Check | Result | Notes |
 | --- | --- | --- | --- |
 | 2026-06-11 | `npm run lint` | Pass | ESLint completed without reported issues. |
-| 2026-06-11 | `npm test` | Pass | Vitest completed with 8 test files and 61 tests passing. |
+| 2026-06-11 | `npm test` | Pass | Vitest completed with 9 test files and 65 tests passing. |
 | 2026-06-11 | `npm run build` | Pass | Next.js production build completed successfully. |
 
 No real Desktop Chrome, Desktop Safari, iOS Safari, or Android Chrome full-flow checks were completed in this environment when this checklist was created. Those rows must be filled by testers using the named browsers/devices before MVP release.

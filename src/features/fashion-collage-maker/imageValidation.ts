@@ -1,7 +1,7 @@
 import {
   MAX_FILE_SIZE_BYTES,
   MAX_UPLOAD_COUNT,
-  REQUIRED_IMAGE_COUNT,
+  MIN_UPLOAD_IMAGE_COUNT,
   SUPPORTED_MIME_TYPES
 } from "./constants";
 
@@ -42,10 +42,10 @@ export function validateImageFiles(files: Iterable<File>): ImageValidationResult
     });
   }
 
-  if (filesToNormalize.length < REQUIRED_IMAGE_COUNT) {
+  if (filesToNormalize.length < MIN_UPLOAD_IMAGE_COUNT) {
     messages.push({
       code: "too_few_images",
-      message: `Add at least ${REQUIRED_IMAGE_COUNT} valid images to continue.`
+      message: `Add at least ${MIN_UPLOAD_IMAGE_COUNT} valid image to continue.`
     });
   }
 

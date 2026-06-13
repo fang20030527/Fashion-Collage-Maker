@@ -1,17 +1,11 @@
-import { EXPORT_HEIGHT, EXPORT_WIDTH } from "./constants";
 import { getCoverDrawRect, slotToPixelRect } from "./renderMath";
-import type { RenderInput, SourceImage } from "./types";
+import type { RenderInput, SourceImage, TemplateConfig } from "./types";
 
 export type RenderableSourceImage = SourceImage & {
   element?: CanvasImageSource;
 };
 
-export type RenderableSelectedImages = readonly [
-  RenderableSourceImage,
-  RenderableSourceImage,
-  RenderableSourceImage,
-  RenderableSourceImage
-];
+export type RenderableSelectedImages = readonly RenderableSourceImage[];
 
 export type CanvasRenderInput = Omit<
   RenderInput,
@@ -35,9 +29,11 @@ export async function renderCollageToCanvas(
   input: CanvasRenderInput
 ): Promise<HTMLCanvasElement> {
   const canvas = document.createElement("canvas");
+  const canvasWidth = input.template.canvasWidth;
+  const canvasHeight = input.template.canvasHeight;
 
-  canvas.width = EXPORT_WIDTH;
-  canvas.height = EXPORT_HEIGHT;
+  canvas.width = canvasWidth;
+  canvas.height = canvasHeight;
 
   const context = canvas.getContext("2d");
 
@@ -46,14 +42,14 @@ export async function renderCollageToCanvas(
   }
 
   context.fillStyle = input.backgroundColor;
-  context.fillRect(0, 0, EXPORT_WIDTH, EXPORT_HEIGHT);
+  context.fillRect(0, 0, canvasWidth, canvasHeight);
 
-  for (const [index, slot] of input.template.slots.entries()) {
-    const image = input.selectedImages[index];
+  for (const { slot, slotIndex } of getSlotsInPaintOrder(input.template)) {
+    const image = input.selectedImages[slotIndex];
     assertRenderableImage(image);
 
     const element = await getDrawableImage(image);
-    const slotRect = slotToPixelRect(slot, EXPORT_WIDTH, EXPORT_HEIGHT);
+    const slotRect = slotToPixelRect(slot, canvasWidth, canvasHeight);
     const slotCenterX = slotRect.x + slotRect.width / 2;
     const slotCenterY = slotRect.y + slotRect.height / 2;
     const localSlotX = -slotRect.width / 2;
@@ -64,7 +60,7 @@ export async function renderCollageToCanvas(
         height: image.height
       },
       slotRect,
-      adjustment: input.slotAdjustments[index]
+      adjustment: input.slotAdjustments[slotIndex]
     });
 
     context.save();
@@ -88,6 +84,8 @@ export async function renderCollageToCanvas(
       context.rect(localSlotX, localSlotY, slotRect.width, slotRect.height);
       context.clip();
 
+      context.save();
+
       try {
         context.drawImage(
           element,
@@ -100,6 +98,8 @@ export async function renderCollageToCanvas(
         throw new CollageRenderError("A selected image could not be drawn.", {
           cause: error
         });
+      } finally {
+        context.restore();
       }
 
       if (slot.borderColor && slot.borderWidth && slot.borderWidth > 0) {
@@ -120,6 +120,12 @@ export async function renderCollageToCanvas(
   }
 
   return canvas;
+}
+
+function getSlotsInPaintOrder(template: TemplateConfig) {
+  return template.slots
+    .map((slot, slotIndex) => ({ slot, slotIndex }))
+    .sort((first, second) => first.slot.zIndex - second.slot.zIndex);
 }
 
 async function getDrawableImage(

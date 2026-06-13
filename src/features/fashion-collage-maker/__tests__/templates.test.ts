@@ -1,7 +1,18 @@
 import { describe, expect, it } from "vitest";
 
-import { BACKGROUND_PRESETS } from "../constants";
-import { getTemplateById, TEMPLATES } from "../templates";
+import {
+  BACKGROUND_PRESETS,
+  LANDSCAPE_EXPORT_HEIGHT,
+  LANDSCAPE_EXPORT_WIDTH,
+  PORTRAIT_EXPORT_HEIGHT,
+  PORTRAIT_EXPORT_WIDTH
+} from "../constants";
+import {
+  getTemplateById,
+  getTemplateForImageCount,
+  MAX_TEMPLATE_SLOT_COUNT,
+  TEMPLATES
+} from "../templates";
 import type {
   EditorState,
   ExportState,
@@ -16,10 +27,7 @@ import type {
 
 const presetColors = new Set(BACKGROUND_PRESETS.map((preset) => preset.color));
 
-function slotsOverlap(
-  first: TemplateSlot,
-  second: TemplateSlot
-) {
+function slotsOverlap(first: TemplateSlot, second: TemplateSlot) {
   return (
     first.x < second.x + second.width &&
     first.x + first.width > second.x &&
@@ -28,8 +36,12 @@ function slotsOverlap(
   );
 }
 
+function getSlotArea(slot: TemplateSlot) {
+  return slot.width * slot.height;
+}
+
 describe("collage templates", () => {
-  it("keeps the domain type contract aligned with the MVP spec", () => {
+  it("keeps the domain type contract aligned with variable templates", () => {
     const stepWithSelect: Step = "select";
     const successfulExport: ExportState = "success";
     const sourceImage: SourceImage = {
@@ -41,23 +53,16 @@ describe("collage templates", () => {
       mimeType: "image/jpeg"
     };
     const slotAdjustment: SlotAdjustment = { panX: 0, panY: 0, zoom: 1 };
-    const selectedImages: SelectedImages = [
-      sourceImage,
-      sourceImage,
-      sourceImage,
-      sourceImage
-    ];
+    const selectedImages: SelectedImages = [sourceImage, sourceImage];
     const slotAdjustments: SlotAdjustments = [
       slotAdjustment,
-      { panX: 0.1, panY: -0.1, zoom: 1.2 },
-      { panX: -0.05, panY: 0, zoom: 1 },
-      { panX: 0, panY: 0.08, zoom: 0.95 }
+      { panX: 0.1, panY: -0.1, zoom: 1.2 }
     ];
     const editorState: EditorState = {
       step: "select",
       sourceImages: selectedImages,
       selectedImages,
-      templateId: TEMPLATES[0].id,
+      templateId: "portrait-rows-2",
       slotAdjustments,
       backgroundColor: BACKGROUND_PRESETS[0].color,
       activeSlotIndex: 0,
@@ -72,47 +77,73 @@ describe("collage templates", () => {
       SlotAdjustment,
       "panX" | "panY" | "zoom"
     > = slotAdjustment;
-    const nonNullSlotAdjustments: SlotAdjustments = editorState.slotAdjustments;
-    const activeSlotIndex: EditorState["activeSlotIndex"] = 3;
-    const exportBlobUrl: EditorState["exportBlobUrl"] = editorState.exportBlobUrl;
     const renderInput: RenderInput = {
-      template: TEMPLATES[0],
+      template: getTemplateById(editorState.templateId),
       selectedImages,
-      slotAdjustments: nonNullSlotAdjustments,
-      backgroundColor: editorState.backgroundColor,
-      width: 2160,
-      height: 2700
+      slotAdjustments,
+      backgroundColor: editorState.backgroundColor
     };
 
     expect(stepWithSelect).toBe("select");
     expect(requiredSourceImageFields.originalFileSize).toBe(1024);
     expect(requiredSlotAdjustmentFields).toEqual(slotAdjustment);
-    expect(activeSlotIndex).toBe(3);
-    expect(exportBlobUrl).toBe("blob:export");
-    expect(renderInput.selectedImages).toHaveLength(4);
+    expect(editorState.activeSlotIndex).toBe(0);
+    expect(editorState.exportBlobUrl).toBe("blob:export");
+    expect(renderInput.selectedImages).toHaveLength(2);
   });
 
-  it("defines four uniquely identified templates", () => {
+  it("defines the eight requested portrait and landscape templates", () => {
+    expect(
+      TEMPLATES.map((template) => ({
+        id: template.id,
+        orientation: template.orientation,
+        slots: template.slots.length
+      }))
+    ).toEqual([
+      { id: "portrait-single", orientation: "portrait", slots: 1 },
+      { id: "portrait-grid-4", orientation: "portrait", slots: 4 },
+      { id: "portrait-rows-3", orientation: "portrait", slots: 3 },
+      { id: "portrait-rows-2", orientation: "portrait", slots: 2 },
+      { id: "landscape-single", orientation: "landscape", slots: 1 },
+      { id: "landscape-grid-4", orientation: "landscape", slots: 4 },
+      { id: "landscape-columns-2", orientation: "landscape", slots: 2 },
+      { id: "landscape-grid-6", orientation: "landscape", slots: 6 }
+    ]);
+
     const templateIds = TEMPLATES.map((template) => template.id);
 
-    expect(TEMPLATES).toHaveLength(4);
     expect(new Set(templateIds).size).toBe(templateIds.length);
+    expect(templateIds).not.toContain("cutout-poster");
+    expect(MAX_TEMPLATE_SLOT_COUNT).toBe(6);
   });
 
   it("finds templates from a string id and falls back to the default template", () => {
-    expect(getTemplateById("clean-grid").id).toBe("clean-grid");
+    expect(getTemplateById("landscape-grid-6").id).toBe("landscape-grid-6");
     expect(getTemplateById("template-id-from-editor-state").id).toBe(
       TEMPLATES[0].id
     );
   });
 
+  it("chooses a sensible starting template by image count", () => {
+    expect(getTemplateForImageCount(1).id).toBe("portrait-single");
+    expect(getTemplateForImageCount(2).id).toBe("portrait-rows-2");
+    expect(getTemplateForImageCount(3).id).toBe("portrait-rows-3");
+    expect(getTemplateForImageCount(4).id).toBe("portrait-grid-4");
+    expect(getTemplateForImageCount(5).id).toBe("portrait-grid-4");
+    expect(getTemplateForImageCount(6).id).toBe("landscape-grid-6");
+  });
+
   it("keeps every template browser-independent and renderable", () => {
     for (const template of TEMPLATES) {
-      expect(template.thumbnailSrc).toMatch(
-        /^\/fashion-collage\/templates\/.+\.png$/
-      );
       expect(presetColors.has(template.defaultBackground)).toBe(true);
-      expect(template.slots).toHaveLength(4);
+
+      if (template.orientation === "portrait") {
+        expect(template.canvasWidth).toBe(PORTRAIT_EXPORT_WIDTH);
+        expect(template.canvasHeight).toBe(PORTRAIT_EXPORT_HEIGHT);
+      } else {
+        expect(template.canvasWidth).toBe(LANDSCAPE_EXPORT_WIDTH);
+        expect(template.canvasHeight).toBe(LANDSCAPE_EXPORT_HEIGHT);
+      }
 
       const slotIds = template.slots.map((slot) => slot.id);
       expect(new Set(slotIds).size).toBe(slotIds.length);
@@ -124,52 +155,43 @@ describe("collage templates", () => {
         expect(slot.height).toBeGreaterThan(0);
         expect(slot.x + slot.width).toBeLessThanOrEqual(1);
         expect(slot.y + slot.height).toBeLessThanOrEqual(1);
+        expect(slot.zIndex).toBeGreaterThan(0);
       }
     }
   });
 
-  it("includes an editorial template with a dominant hero slot", () => {
-    const editorialHero = TEMPLATES.find(
-      (template) => template.id === "editorial-hero"
-    );
+  it("uses regular cut-free grid compositions", () => {
+    for (const template of TEMPLATES) {
+      const totalArea = template.slots.reduce(
+        (sum, slot) => sum + getSlotArea(slot),
+        0
+      );
 
-    expect(editorialHero).toBeDefined();
-    expect(editorialHero?.slots.some((slot) => slot.width * slot.height > 0.35))
-      .toBe(true);
-  });
-
-  it("includes an overlapped print template with rotation and shadow", () => {
-    const overlappedPrint = TEMPLATES.find(
-      (template) => template.id === "overlapped-print"
-    );
-
-    expect(overlappedPrint).toBeDefined();
-    expect(
-      overlappedPrint?.slots.some((slot, index, slots) =>
-        slots.some(
-          (candidate, candidateIndex) =>
-            candidateIndex !== index && slotsOverlap(slot, candidate)
+      expect(totalArea).toBeCloseTo(1);
+      expect(
+        template.slots.some((slot, index, slots) =>
+          slots.some(
+            (candidate, candidateIndex) =>
+              candidateIndex !== index && slotsOverlap(slot, candidate)
+          )
         )
-      )
-    ).toBe(true);
-    expect(
-      overlappedPrint?.slots.some(
-        (slot) => "rotation" in slot && Math.abs(slot.rotation) > 0
-      )
-    ).toBe(true);
-    expect(overlappedPrint?.slots.some((slot) => "shadow" in slot)).toBe(true);
+      ).toBe(false);
+      expect(template.slots.every((slot) => slot.rotation === undefined)).toBe(true);
+      expect(template.slots.every((slot) => slot.shadow === undefined)).toBe(true);
+      expect(template.slots.every((slot) => slot.borderColor === undefined))
+        .toBe(true);
+      expect(template.slots.every((slot) => slot.borderWidth === undefined))
+        .toBe(true);
+    }
   });
 
-  it("includes a restrained, grid-like template", () => {
-    const cleanGrid = TEMPLATES.find((template) => template.id === "clean-grid");
+  it("keeps layer order explicit for click and export behavior", () => {
+    for (const template of TEMPLATES) {
+      const zIndexes = template.slots.map((slot) => slot.zIndex);
 
-    expect(cleanGrid).toBeDefined();
-    expect(
-      cleanGrid?.slots.every(
-        (slot) => !("rotation" in slot) && !("shadow" in slot)
-      )
-    ).toBe(true);
-    expect(new Set(cleanGrid?.slots.map((slot) => slot.width)).size).toBe(1);
-    expect(new Set(cleanGrid?.slots.map((slot) => slot.height)).size).toBe(1);
+      expect(zIndexes).toEqual(
+        Array.from({ length: template.slots.length }, (_, index) => index + 1)
+      );
+    }
   });
 });

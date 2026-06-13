@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   MAX_FILE_SIZE_BYTES,
   MAX_UPLOAD_COUNT,
-  REQUIRED_IMAGE_COUNT
+  MIN_UPLOAD_IMAGE_COUNT
 } from "../constants";
 import { validateImageFiles } from "../imageValidation";
 
@@ -27,8 +27,8 @@ function makeImageFiles(count: number) {
 }
 
 describe("validateImageFiles", () => {
-  it("accepts exactly 4 valid images", () => {
-    const files = makeImageFiles(REQUIRED_IMAGE_COUNT);
+  it("accepts one valid image", () => {
+    const files = makeImageFiles(MIN_UPLOAD_IMAGE_COUNT);
     const result = validateImageFiles(files);
 
     expect(result.filesToNormalize).toEqual(files);
@@ -36,8 +36,8 @@ describe("validateImageFiles", () => {
     expect(result.messages).toEqual([]);
   });
 
-  it("accepts 5 to 9 valid images without visible errors", () => {
-    for (let count = 5; count <= MAX_UPLOAD_COUNT; count += 1) {
+  it("accepts 2 to 9 valid images without visible errors", () => {
+    for (let count = 2; count <= MAX_UPLOAD_COUNT; count += 1) {
       const files = makeImageFiles(count);
       const result = validateImageFiles(files);
 
@@ -67,7 +67,7 @@ describe("validateImageFiles", () => {
       type: "image/jpeg"
     });
     const result = validateImageFiles([
-      ...makeImageFiles(REQUIRED_IMAGE_COUNT),
+      ...makeImageFiles(MIN_UPLOAD_IMAGE_COUNT),
       oversizedFile
     ]);
 
@@ -86,7 +86,7 @@ describe("validateImageFiles", () => {
     const textFile = makeFile("notes.txt", { type: "text/plain" });
     const pdfFile = makeFile("lookbook.pdf", { type: "application/pdf" });
     const result = validateImageFiles([
-      ...makeImageFiles(REQUIRED_IMAGE_COUNT),
+      ...makeImageFiles(MIN_UPLOAD_IMAGE_COUNT),
       textFile,
       pdfFile
     ]);
@@ -107,16 +107,11 @@ describe("validateImageFiles", () => {
     ]);
   });
 
-  it("reports mixed accepted and rejected files with too few valid images", () => {
-    const acceptedFiles = [
-      makeFile("front.png", { type: "image/png" }),
-      makeFile("detail.webp", { type: "image/webp" }),
-      makeFile("mobile.heic", { type: "image/heic" })
-    ];
+  it("reports too few valid images when every file is rejected", () => {
     const rejectedFile = makeFile("brief.txt", { type: "text/plain" });
-    const result = validateImageFiles([...acceptedFiles, rejectedFile]);
+    const result = validateImageFiles([rejectedFile]);
 
-    expect(result.filesToNormalize).toEqual(acceptedFiles);
+    expect(result.filesToNormalize).toEqual([]);
     expect(result.rejectedFiles).toEqual([
       expect.objectContaining({
         code: "unsupported_format",
@@ -126,7 +121,7 @@ describe("validateImageFiles", () => {
     expect(result.messages).toEqual([
       expect.objectContaining({
         code: "too_few_images",
-        message: expect.stringContaining(`at least ${REQUIRED_IMAGE_COUNT}`)
+        message: expect.stringContaining(`at least ${MIN_UPLOAD_IMAGE_COUNT}`)
       })
     ]);
   });

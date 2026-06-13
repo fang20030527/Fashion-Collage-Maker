@@ -4,30 +4,29 @@ import { getCoverDrawRect, slotToPixelRect } from "../renderMath";
 import styles from "../FashionCollageMaker.module.css";
 import type {
   EditorState,
-  SelectedImages,
   SlotAdjustment,
   SlotAdjustments,
+  SourceImage,
   TemplateConfig,
   TemplateSlot
 } from "../types";
 
 const PREVIEW_WIDTH = 1000;
-const PREVIEW_HEIGHT = 1250;
 
 type CanvasPreviewProps = {
   activeSlotIndex: EditorState["activeSlotIndex"];
   backgroundColor: string;
   disabled: boolean;
-  selectedImages: SelectedImages;
+  selectedImages: SourceImage[];
   slotAdjustments: SlotAdjustments;
   template: TemplateConfig;
-  onSelectSlot: (slotIndex: 0 | 1 | 2 | 3) => void;
+  onSelectSlot: (slotIndex: number) => void;
   onUpdateActiveSlot: (adjustment: Partial<SlotAdjustment>) => void;
 };
 
 type DragState = {
   pointerId: number;
-  slotIndex: 0 | 1 | 2 | 3;
+  slotIndex: number;
   slotWidth: number;
   slotHeight: number;
   startX: number;
@@ -36,8 +35,8 @@ type DragState = {
   startPanY: number;
 };
 
-function toSlotIndex(index: number): 0 | 1 | 2 | 3 {
-  return index as 0 | 1 | 2 | 3;
+function getPreviewHeight(template: TemplateConfig) {
+  return PREVIEW_WIDTH * (template.canvasHeight / template.canvasWidth);
 }
 
 function getSlotStyle(slot: TemplateSlot): React.CSSProperties {
@@ -46,6 +45,7 @@ function getSlotStyle(slot: TemplateSlot): React.CSSProperties {
     top: `${slot.y * 100}%`,
     width: `${slot.width * 100}%`,
     height: `${slot.height * 100}%`,
+    zIndex: slot.zIndex,
     transform: `rotate(${slot.rotation ?? 0}deg)`,
     boxShadow: slot.shadow
       ? `${slot.shadow.offsetX / 5}px ${slot.shadow.offsetY / 5}px ${
@@ -58,11 +58,12 @@ function getSlotStyle(slot: TemplateSlot): React.CSSProperties {
 }
 
 function getImageStyle(
-  image: SelectedImages[number],
+  image: SourceImage,
   slot: TemplateSlot,
-  adjustment: SlotAdjustment
+  adjustment: SlotAdjustment,
+  template: TemplateConfig
 ): React.CSSProperties {
-  const slotRect = slotToPixelRect(slot, PREVIEW_WIDTH, PREVIEW_HEIGHT);
+  const slotRect = slotToPixelRect(slot, PREVIEW_WIDTH, getPreviewHeight(template));
   const drawRect = getCoverDrawRect({
     imageSize: {
       width: image.width,
@@ -98,7 +99,7 @@ export function CanvasPreview({
 
   function handlePointerDown(
     event: React.PointerEvent<HTMLButtonElement>,
-    slotIndex: 0 | 1 | 2 | 3
+    slotIndex: number
   ) {
     if (disabled) {
       return;
@@ -163,13 +164,21 @@ export function CanvasPreview({
     <div className={styles.previewShell}>
       <div
         className={styles.canvasPreview}
-        style={{ backgroundColor }}
+        style={{
+          aspectRatio: `${template.canvasWidth} / ${template.canvasHeight}`,
+          backgroundColor
+        }}
         aria-label={`${template.name} collage preview`}
       >
         {template.slots.map((slot, index) => {
-          const slotIndex = toSlotIndex(index);
+          const slotIndex = index;
           const isActive = activeSlotIndex === slotIndex;
           const image = selectedImages[slotIndex];
+          const adjustment = slotAdjustments[slotIndex];
+
+          if (!image || !adjustment) {
+            return null;
+          }
 
           return (
             <button
@@ -186,14 +195,14 @@ export function CanvasPreview({
               onPointerUp={stopDragging}
               onPointerCancel={stopDragging}
               aria-pressed={isActive}
-              aria-label={`Select slot ${slotIndex + 1}`}
+              aria-label={`Select layer ${slotIndex + 1}`}
             >
               {/* eslint-disable-next-line @next/next/no-img-element -- Preview uses blob URLs with dynamic crop rect styles. */}
               <img
                 src={image.objectUrl}
                 alt=""
                 draggable={false}
-                style={getImageStyle(image, slot, slotAdjustments[slotIndex])}
+                style={getImageStyle(image, slot, adjustment, template)}
               />
               <span className={styles.slotNumber}>{slotIndex + 1}</span>
             </button>

@@ -1,129 +1,156 @@
-import { BACKGROUND_PRESETS } from "./constants";
-import type { TemplateConfig } from "./types";
+import {
+  BACKGROUND_PRESETS,
+  LANDSCAPE_EXPORT_HEIGHT,
+  LANDSCAPE_EXPORT_WIDTH,
+  PORTRAIT_EXPORT_HEIGHT,
+  PORTRAIT_EXPORT_WIDTH
+} from "./constants";
+import type {
+  TemplateConfig,
+  TemplateOrientation,
+  TemplateSlot
+} from "./types";
 
-const thumbnailBasePath = "/fashion-collage/templates";
+type SlotRect = Pick<TemplateSlot, "id" | "x" | "y" | "width" | "height">;
+
+const whiteBackground = BACKGROUND_PRESETS[0].color;
+
+function withLayerOrder(slots: readonly SlotRect[]): readonly TemplateSlot[] {
+  return slots.map((slot, index) => ({
+    ...slot,
+    zIndex: index + 1
+  }));
+}
+
+function createTemplate({
+  id,
+  name,
+  orientation,
+  slots
+}: {
+  id: string;
+  name: string;
+  orientation: TemplateOrientation;
+  slots: readonly SlotRect[];
+}): TemplateConfig {
+  return {
+    id,
+    name,
+    orientation,
+    canvasWidth:
+      orientation === "portrait" ? PORTRAIT_EXPORT_WIDTH : LANDSCAPE_EXPORT_WIDTH,
+    canvasHeight:
+      orientation === "portrait"
+        ? PORTRAIT_EXPORT_HEIGHT
+        : LANDSCAPE_EXPORT_HEIGHT,
+    defaultBackground: whiteBackground,
+    slots: withLayerOrder(slots)
+  };
+}
 
 export const TEMPLATES = [
-  {
-    id: "editorial-hero",
-    name: "Editorial Hero",
-    thumbnailSrc: `${thumbnailBasePath}/editorial-hero.png`,
-    defaultBackground: BACKGROUND_PRESETS[0].color,
+  createTemplate({
+    id: "portrait-single",
+    name: "Portrait Single",
+    orientation: "portrait",
+    slots: [{ id: "full", x: 0, y: 0, width: 1, height: 1 }]
+  }),
+  createTemplate({
+    id: "portrait-grid-4",
+    name: "Portrait 2 x 2",
+    orientation: "portrait",
     slots: [
-      {
-        id: "hero",
-        x: 0.08,
-        y: 0.06,
-        width: 0.58,
-        height: 0.64,
-        shadow: {
-          color: "rgba(17, 17, 17, 0.16)",
-          blur: 36,
-          offsetX: 0,
-          offsetY: 18
-        }
-      },
-      { id: "top-right", x: 0.69, y: 0.1, width: 0.23, height: 0.26 },
-      { id: "middle-right", x: 0.69, y: 0.41, width: 0.23, height: 0.26 },
-      { id: "bottom-wide", x: 0.18, y: 0.74, width: 0.64, height: 0.18 }
+      { id: "top-left", x: 0, y: 0, width: 0.5, height: 0.5 },
+      { id: "top-right", x: 0.5, y: 0, width: 0.5, height: 0.5 },
+      { id: "bottom-left", x: 0, y: 0.5, width: 0.5, height: 0.5 },
+      { id: "bottom-right", x: 0.5, y: 0.5, width: 0.5, height: 0.5 }
     ]
-  },
-  {
-    id: "clean-grid",
-    name: "Clean Grid",
-    thumbnailSrc: `${thumbnailBasePath}/clean-grid.png`,
-    defaultBackground: BACKGROUND_PRESETS[1].color,
+  }),
+  createTemplate({
+    id: "portrait-rows-3",
+    name: "Portrait 3 Rows",
+    orientation: "portrait",
     slots: [
-      { id: "top-left", x: 0.08, y: 0.08, width: 0.4, height: 0.39 },
-      { id: "top-right", x: 0.52, y: 0.08, width: 0.4, height: 0.39 },
-      { id: "bottom-left", x: 0.08, y: 0.53, width: 0.4, height: 0.39 },
-      { id: "bottom-right", x: 0.52, y: 0.53, width: 0.4, height: 0.39 }
+      { id: "top", x: 0, y: 0, width: 1, height: 1 / 3 },
+      { id: "middle", x: 0, y: 1 / 3, width: 1, height: 1 / 3 },
+      { id: "bottom", x: 0, y: 2 / 3, width: 1, height: 1 / 3 }
     ]
-  },
-  {
-    id: "overlapped-print",
-    name: "Overlapped Print",
-    thumbnailSrc: `${thumbnailBasePath}/overlapped-print.png`,
-    defaultBackground: BACKGROUND_PRESETS[2].color,
+  }),
+  createTemplate({
+    id: "portrait-rows-2",
+    name: "Portrait 2 Rows",
+    orientation: "portrait",
     slots: [
-      {
-        id: "left-card",
-        x: 0.09,
-        y: 0.13,
-        width: 0.42,
-        height: 0.46,
-        rotation: -3,
-        borderColor: "#F7F3ED",
-        borderWidth: 18,
-        shadow: {
-          color: "rgba(17, 17, 17, 0.2)",
-          blur: 34,
-          offsetX: 0,
-          offsetY: 18
-        }
-      },
-      {
-        id: "right-card",
-        x: 0.43,
-        y: 0.17,
-        width: 0.46,
-        height: 0.5,
-        rotation: 2.5,
-        borderColor: "#F7F3ED",
-        borderWidth: 18,
-        shadow: {
-          color: "rgba(17, 17, 17, 0.18)",
-          blur: 30,
-          offsetX: 0,
-          offsetY: 16
-        }
-      },
-      {
-        id: "lower-left",
-        x: 0.17,
-        y: 0.58,
-        width: 0.31,
-        height: 0.29,
-        rotation: 1.5,
-        borderColor: "#F7F3ED",
-        borderWidth: 14,
-        shadow: {
-          color: "rgba(17, 17, 17, 0.14)",
-          blur: 24,
-          offsetX: 0,
-          offsetY: 12
-        }
-      },
-      {
-        id: "lower-right",
-        x: 0.52,
-        y: 0.62,
-        width: 0.31,
-        height: 0.27,
-        rotation: -1.5,
-        borderColor: "#F7F3ED",
-        borderWidth: 14
-      }
+      { id: "top", x: 0, y: 0, width: 1, height: 0.5 },
+      { id: "bottom", x: 0, y: 0.5, width: 1, height: 0.5 }
     ]
-  },
-  {
-    id: "lookbook-strip",
-    name: "Lookbook Strip",
-    thumbnailSrc: `${thumbnailBasePath}/lookbook-strip.png`,
-    defaultBackground: BACKGROUND_PRESETS[5].color,
+  }),
+  createTemplate({
+    id: "landscape-single",
+    name: "Landscape Single",
+    orientation: "landscape",
+    slots: [{ id: "full", x: 0, y: 0, width: 1, height: 1 }]
+  }),
+  createTemplate({
+    id: "landscape-grid-4",
+    name: "Landscape 2 x 2",
+    orientation: "landscape",
     slots: [
-      { id: "top-strip", x: 0.12, y: 0.07, width: 0.76, height: 0.22 },
-      { id: "upper-middle", x: 0.12, y: 0.32, width: 0.76, height: 0.2 },
-      { id: "lower-middle", x: 0.12, y: 0.55, width: 0.76, height: 0.2 },
-      { id: "bottom-strip", x: 0.12, y: 0.78, width: 0.76, height: 0.15 }
+      { id: "top-left", x: 0, y: 0, width: 0.5, height: 0.5 },
+      { id: "top-right", x: 0.5, y: 0, width: 0.5, height: 0.5 },
+      { id: "bottom-left", x: 0, y: 0.5, width: 0.5, height: 0.5 },
+      { id: "bottom-right", x: 0.5, y: 0.5, width: 0.5, height: 0.5 }
     ]
-  }
+  }),
+  createTemplate({
+    id: "landscape-columns-2",
+    name: "Landscape 2 Columns",
+    orientation: "landscape",
+    slots: [
+      { id: "left", x: 0, y: 0, width: 0.5, height: 1 },
+      { id: "right", x: 0.5, y: 0, width: 0.5, height: 1 }
+    ]
+  }),
+  createTemplate({
+    id: "landscape-grid-6",
+    name: "Landscape 3 x 2",
+    orientation: "landscape",
+    slots: [
+      { id: "top-left", x: 0, y: 0, width: 1 / 3, height: 0.5 },
+      { id: "top-middle", x: 1 / 3, y: 0, width: 1 / 3, height: 0.5 },
+      { id: "top-right", x: 2 / 3, y: 0, width: 1 / 3, height: 0.5 },
+      { id: "bottom-left", x: 0, y: 0.5, width: 1 / 3, height: 0.5 },
+      { id: "bottom-middle", x: 1 / 3, y: 0.5, width: 1 / 3, height: 0.5 },
+      { id: "bottom-right", x: 2 / 3, y: 0.5, width: 1 / 3, height: 0.5 }
+    ]
+  })
 ] as const satisfies readonly TemplateConfig[];
 
 export type TemplateId = (typeof TEMPLATES)[number]["id"];
 
-export const DEFAULT_TEMPLATE_ID: TemplateId = "editorial-hero";
+export const DEFAULT_TEMPLATE_ID: TemplateId = "portrait-single";
+
+export const MAX_TEMPLATE_SLOT_COUNT = Math.max(
+  ...TEMPLATES.map((template) => template.slots.length)
+);
 
 export function getTemplateById(templateId: string): TemplateConfig {
   return TEMPLATES.find((template) => template.id === templateId) ?? TEMPLATES[0];
+}
+
+export function getTemplateForImageCount(imageCount: number): TemplateConfig {
+  const exactMatch = TEMPLATES.find(
+    (template) => template.slots.length === imageCount
+  );
+
+  if (exactMatch) {
+    return exactMatch;
+  }
+
+  return (
+    [...TEMPLATES]
+      .filter((template) => template.slots.length < imageCount)
+      .sort((first, second) => second.slots.length - first.slots.length)[0] ??
+    TEMPLATES[0]
+  );
 }

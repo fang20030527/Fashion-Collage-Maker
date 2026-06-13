@@ -29,6 +29,7 @@ export type TemplateSlot = {
   y: number;
   width: number;
   height: number;
+  zIndex: number;
   rotation?: number;
   borderColor?: string;
   borderWidth?: number;
@@ -40,27 +41,21 @@ export type TemplateSlot = {
   };
 };
 
+export type TemplateOrientation = "portrait" | "landscape";
+
 export type TemplateConfig = {
   id: string;
   name: string;
-  thumbnailSrc: string;
+  orientation: TemplateOrientation;
+  canvasWidth: number;
+  canvasHeight: number;
   defaultBackground: string;
-  slots: readonly [TemplateSlot, TemplateSlot, TemplateSlot, TemplateSlot];
+  slots: readonly TemplateSlot[];
 };
 
-export type SelectedImages = [
-  SourceImage,
-  SourceImage,
-  SourceImage,
-  SourceImage
-];
+export type SelectedImages = SourceImage[];
 
-export type SlotAdjustments = [
-  SlotAdjustment,
-  SlotAdjustment,
-  SlotAdjustment,
-  SlotAdjustment
-];
+export type SlotAdjustments = SlotAdjustment[];
 
 export type EditorState = {
   step: Step;
@@ -69,7 +64,7 @@ export type EditorState = {
   templateId: string;
   slotAdjustments: SlotAdjustments;
   backgroundColor: string;
-  activeSlotIndex: 0 | 1 | 2 | 3 | null;
+  activeSlotIndex: number | null;
   exportState: ExportState;
   exportBlobUrl: string | null;
 };
@@ -79,6 +74,4 @@ export type RenderInput = {
   selectedImages: SelectedImages;
   slotAdjustments: SlotAdjustments;
   backgroundColor: string;
-  width: number;
-  height: number;
 };
