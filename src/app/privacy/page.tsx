@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { APP_NAME } from "@/features/fashion-collage-maker/constants";
+
 export const metadata: Metadata = {
   title: "Privacy",
-  description:
-    "Privacy details for Fashion Collage Maker, a browser-only collage tool that does not upload or collect user photos."
+  description: `Privacy details for ${APP_NAME}, a browser-only collage tool that does not upload or collect user photos.`
 };
 
 export default function PrivacyPage() {
@@ -14,8 +15,8 @@ export default function PrivacyPage() {
         <p className="privacy-page__eyebrow">Privacy</p>
         <h1 id="privacy-title">Your photos stay in your browser.</h1>
         <p>
-          Fashion Collage Maker prepares, edits, and exports your collage locally
-          in your browser. Your photos are not uploaded to a server.
+          {APP_NAME} prepares, edits, and exports your collage locally in your
+          browser. Your photos are not uploaded to a server.
         </p>
         <p>
           This MVP does not collect images, image filenames, EXIF metadata,

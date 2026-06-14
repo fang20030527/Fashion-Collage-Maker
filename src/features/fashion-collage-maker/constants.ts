@@ -1,5 +1,6 @@
 import type { BackgroundPreset } from "./types";
 
+export const APP_NAME = "PostFrame";
 export const MAX_FILE_SIZE_BYTES = 15 * 1024 * 1024;
 export const MAX_UPLOAD_COUNT = 9;
 export const MIN_UPLOAD_IMAGE_COUNT = 1;

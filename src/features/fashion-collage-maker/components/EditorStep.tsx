@@ -1,4 +1,5 @@
 import type { EditorAction } from "../editorReducer";
+import { APP_NAME } from "../constants";
 import { getTemplateById } from "../templates";
 import styles from "../FashionCollageMaker.module.css";
 import type { EditorState, SlotAdjustment } from "../types";
@@ -54,7 +55,7 @@ export function EditorStep({
       <section className={styles.editorScreen} aria-labelledby="editor-title">
         <div className={styles.editorStatusPanel}>
           <p className={styles.kicker}>Editor unavailable</p>
-          <h1 id="editor-title">Fashion Collage Maker</h1>
+          <h1 id="editor-title">{APP_NAME}</h1>
           <p className={styles.privacy}>Select 4 photos before editing.</p>
         </div>
       </section>
@@ -66,7 +67,7 @@ export function EditorStep({
       <div className={styles.editorHeader}>
         <div>
           <p className={styles.kicker}>Local editor</p>
-          <h1 id="editor-title">Fashion Collage Maker</h1>
+          <h1 id="editor-title">{APP_NAME}</h1>
         </div>
         <p className={styles.privacy}>Your photos stay in your browser.</p>
       </div>

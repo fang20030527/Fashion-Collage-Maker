@@ -1,7 +1,7 @@
 import Image from "next/image";
 import { useMemo, useState } from "react";
 
-import { MAX_TEMPLATE_IMAGE_COUNT } from "../constants";
+import { APP_NAME, MAX_TEMPLATE_IMAGE_COUNT } from "../constants";
 import styles from "../FashionCollageMaker.module.css";
 import type { SourceImage } from "../types";
 
@@ -43,7 +43,7 @@ export function SelectStep({ images, messages, onContinue }: SelectStepProps) {
       <header className={styles.selectHeader}>
         <div>
           <p className={styles.kicker}>Curate the final set</p>
-          <h1 id="select-title">Fashion Collage Maker</h1>
+          <h1 id="select-title">{APP_NAME}</h1>
           <p className={styles.subtitle}>
             Pick the photos with the strongest rhythm for the largest layout.
           </p>

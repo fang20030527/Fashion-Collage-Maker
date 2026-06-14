@@ -3,6 +3,7 @@
 import { useId, useState, type CSSProperties } from "react";
 
 import {
+  APP_NAME,
   MAX_TEMPLATE_IMAGE_COUNT,
   MAX_UPLOAD_COUNT,
   MIN_UPLOAD_IMAGE_COUNT
@@ -109,7 +110,7 @@ export function UploadStep({
   return (
     <section className={styles.uploadScreen} aria-labelledby="fashion-title">
       <div className={styles.intro}>
-        <h1 id="fashion-title">Fashion Collage Maker</h1>
+        <h1 id="fashion-title">{APP_NAME}</h1>
         <p className={styles.subtitle}>
           Shape a magazine-ready collage from {MIN_UPLOAD_IMAGE_COUNT} to{" "}
           {MAX_TEMPLATE_IMAGE_COUNT} photos.

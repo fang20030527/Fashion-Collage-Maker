@@ -1,5 +1,6 @@
 import { useId, useState } from "react";
 
+import { APP_NAME } from "../constants";
 import { formatExportFilename } from "../exportFilename";
 import styles from "../FashionCollageMaker.module.css";
 
@@ -45,7 +46,7 @@ export function ResultStep({
       <div className={styles.resultHeader}>
         <div>
           <p className={styles.kicker}>Export ready</p>
-          <h1 id="result-title">Fashion Collage Maker</h1>
+          <h1 id="result-title">{APP_NAME}</h1>
         </div>
         <div className={styles.resultActions}>
           <a
